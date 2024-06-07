@@ -1,8 +1,6 @@
 import discord, os, random, asyncio, datetime, pytz
 from discord.ext import commands
-from dotenv import load_dotenv
 
-load_dotenv()
 #TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 
@@ -14,7 +12,6 @@ async def on_ready():
     print(f'ログインしました {bot.user}')
 
     # メッセージを送信するチャンネルを取得
-    load_dotenv()
     target_channel_id = int(os.getenv('channel_id'))
     target_channel = bot.get_channel(target_channel_id)
 

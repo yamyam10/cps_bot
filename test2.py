@@ -1,216 +1,9 @@
-import discord, os, random, asyncio, datetime, pytz, openai
-from discord.ext import commands
+import discord
+import os
 from discord import app_commands
-# from dotenv import load_dotenv
-
-# load_dotenv()
-
-#TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
-openai.api_key = os.getenv('openai')
-model_engine = "gpt-3.5-turbo"
-
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
-bot.remove_command("help")
-
-@bot.event
-async def on_ready():
-    print(f'ログインしました {bot.user}')
-
-    # メッセージを送信するチャンネルを取得
-    target_channel_id = int(os.getenv('channel_id'))
-    target_channel = bot.get_channel(target_channel_id)
-
-    # メッセージを送信
-    if target_channel:
-        japan_timezone = pytz.timezone('Asia/Tokyo')
-        now = datetime.datetime.now(japan_timezone)
-        login_message = f"{now.strftime('%Y年%m月%d日')}{now.strftime('%H:%M:%S')} ログインしました"
-        await target_channel.send(login_message)
-    else:
-        print("指定されたチャンネルが見つかりません。")
-
-    # スラッシュコマンド同期
-    try:
-        synced = await bot.tree.sync()
-        print(f"{len(synced)}個のコマンドを同期しました。")
-    except Exception as e:
-        print(e)
-
-@bot.tree.command(name="help", description="コマンドの詳細表示")
-async def help(interaction: discord.Interaction):
-    embed = discord.Embed(title="コマンド一覧", color=discord.Colour.purple())
-    embed.add_field(name="", value="`/help：`コマンド詳細を表示。", inline=False)
-    embed.add_field(name="", value="`/おみくじ：`運勢を占ってくれるよ。", inline=False)
-    embed.add_field(name="", value="`/チーム分け @mention：`ランダムでチーム分け", inline=False)
-    embed.add_field(name="", value="`/ヒーロー：`ランダムでヒーローを表示", inline=False)
-    embed.add_field(name="", value="`/ヒーロー設定：`ロールなどを選んでランダムにヒーローを表示", inline=False)
-    embed.add_field(name="", value="`/ステージ：`ランダムでステージを表示", inline=False)
-    embed.add_field(name="", value="`/ロール削除：`ロール削除", inline=False)
-    embed.add_field(name="", value="`/ダイス：`ダイスを振ってくれるよ。", inline=False)
-    await interaction.response.send_message(embed=embed)
-
-OMIKUJI_RESULTS = [
-    (0.0, 0.0, "大凶", 0.05),
-    (1.0, 199.0, "吉", 0.2),
-    (200.0, 399.0, "中吉", 0.3),
-    (400.0, 499.0, "小吉", 0.15),
-    (500.0, 979.0, "末吉", 0.25),
-    (980.0, 999.9, "大吉", 0.1),
-]
-
-@bot.tree.command(name="おみくじ", description="運勢を占ってくれるよ。")
-async def おみくじ(interaction: discord.Interaction):
-    result = random.uniform(0, 999.9)
-    for omikuji_range in OMIKUJI_RESULTS:
-        start, end, title, probability = omikuji_range
-        if start <= result <= end:
-            embed = discord.Embed(title=f'{interaction.user.mention} さんの運勢は「{title}」です！', color=discord.Colour.purple())
-            await interaction.response.send_message(embed=embed)
-            return
-    # 範囲外の場合はエラーメッセージを送信する
-    embed = discord.Embed(title="ERROR", description="運勢の取得中にエラーが発生しました。", color=discord.Colour.purple())
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="チーム分け", description="チーム分けをしてくれるよ。")
-async def チーム分け(interaction: discord.Interaction, role: discord.Role):
-    # ユーザーに応答を返す前に、処理が実行中であることを示す
-    await interaction.response.defer()
-
-    # 管理者ロールがない場合は無視
-    if not discord.utils.get(interaction.user.roles, name="管理者"):
-        await interaction.followup.send(embed=discord.Embed(title='このコマンドは管理者のみが実行できます。', color=discord.Colour.purple()))
-        return
-
-    # ロールに属するメンバーを取得してシャッフル
-    members = role.members
-    random.shuffle(members)
-
-    # チーム分け
-    teams = [members[i:i + 3] for i in range(0, len(members), 3)]
-
-    # チームごとにメッセージとロールを作成・付与
-    messages = []
-    for i, team in enumerate(teams):
-        team_name = chr(ord("A") + i)
-        message = f"**チーム{team_name}**\n"
-        message += "\n".join(f"- {member.mention}" for member in team)
-        messages.append(message)
-
-        role_name = f"チーム{team_name}"
-        team_role = discord.utils.get(interaction.guild.roles, name=role_name) or await interaction.guild.create_role(name=role_name, mentionable=True)
-        await asyncio.gather(*[member.add_roles(team_role) for member in team])
-
-    # メッセージを一度に送信
-    try:
-        await interaction.followup.send("\n".join(messages))
-        await asyncio.sleep(1)
-    except discord.errors.NotFound:
-        pass
-
-@bot.tree.command(name="ステージ", description="ランダムでステージを表示")
-async def ステージ(interaction: discord.Interaction):
-    stage = random.randint(0, 18)  # 0~18
-    if stage == 0:  # 0が出たとき
-        stageimg = "stage1.jpg"
-        file = discord.File(fp="stage/stage1.jpg", filename=stageimg, spoiler=False)
-    elif stage == 1:
-        stageimg = "stage2.jpg"
-        file = discord.File(fp="stage/stage2.jpg", filename=stageimg, spoiler=False)
-    elif stage == 2:
-        stageimg = "stage3.jpg"
-        file = discord.File(fp="stage/stage3.jpg", filename=stageimg, spoiler=False)
-    elif stage == 3:
-        stageimg = "stage4.jpg"
-        file = discord.File(fp="stage/stage4.jpg", filename=stageimg, spoiler=False)
-    elif stage == 4:
-        stageimg = "stage5.jpg"
-        file = discord.File(fp="stage/stage5.jpg", filename=stageimg, spoiler=False)
-    elif stage == 5:
-        stageimg = "stage6.jpg"
-        file = discord.File(fp="stage/stage6.jpg", filename=stageimg, spoiler=False)
-    elif stage == 6:
-        stageimg = "stage7.jpg"
-        file = discord.File(fp="stage/stage7.jpg", filename=stageimg, spoiler=False)
-    elif stage == 7:
-        stageimg = "stage8.jpg"
-        file = discord.File(fp="stage/stage8.jpg", filename=stageimg, spoiler=False)
-    elif stage == 8:
-        stageimg = "stage9.jpg"
-        file = discord.File(fp="stage/stage9.jpg", filename=stageimg, spoiler=False)
-    elif stage == 9:
-        stageimg = "stage10.jpg"
-        file = discord.File(fp="stage/stage10.jpg", filename=stageimg, spoiler=False)
-    elif stage == 10:
-        stageimg = "stage11.jpg"
-        file = discord.File(fp="stage/stage11.jpg", filename=stageimg, spoiler=False)
-    elif stage == 11:
-        stageimg = "stage12.jpg"
-        file = discord.File(fp="stage/stage12.jpg", filename=stageimg, spoiler=False)
-    elif stage == 12:
-        stageimg = "stage13.jpg"
-        file = discord.File(fp="stage/stage13.jpg", filename=stageimg, spoiler=False)
-    elif stage == 13:
-        stageimg = "stage14.jpg"
-        file = discord.File(fp="stage/stage14.jpg", filename=stageimg, spoiler=False)
-    elif stage == 14:
-        stageimg = "stage15.jpg"
-        file = discord.File(fp="stage/stage15.jpg", filename=stageimg, spoiler=False)
-    elif stage == 15:
-        stageimg = "stage16.jpg"
-        file = discord.File(fp="stage/stage16.jpg", filename=stageimg, spoiler=False)
-    elif stage == 16:
-        stageimg = "stage17.jpg"
-        file = discord.File(fp="stage/stage17.jpg", filename=stageimg, spoiler=False)
-    elif stage == 17:
-        stageimg = "stage18.jpg"
-        file = discord.File(fp="stage/stage18.jpg", filename=stageimg, spoiler=False)
-    elif stage == 18:
-        stageimg = "stage19.jpg"
-        file = discord.File(fp="stage/stage19.jpg", filename=stageimg, spoiler=False)
-    else:  # それ以外なのでERRORが出た時に処理される
-        print("sutageエラー")
-    await interaction.response.send_message(file=file)
-
-@bot.tree.command(name="ロール削除", description="全てのチームロールを一括で削除")
-async def ロール削除(interaction: discord.Interaction):
-    # 管理者ロールがない場合は無視
-    if not discord.utils.get(interaction.user.roles, name="管理者"):
-        embed = discord.Embed(title='このコマンドは管理者のみが実行できます。', color=discord.Colour.purple())
-        await interaction.response.send_message(embed=embed)
-        return
-
-    guild = interaction.guild  # 直接interactionオブジェクトからguildを取得
-    team_roles = ['チームA', 'チームB', 'チームC', 'チームD', 'チームE', 'チームF']
-
-    for member in guild.members:
-        for role in member.roles:
-            if role.name in team_roles:
-                await member.remove_roles(role)
-
-    embed = discord.Embed(title='全てのチームロールを一括で削除しました。', color=discord.Colour.purple())
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="ダイス", description="ダイスを振ってくれるよ。")
-async def ダイス(interaction: discord.Interaction):
-    sides = 6  # デフォルトのサイコロの面数を設定
-    result = random.randint(1, sides)
-    await interaction.response.send_message(f'{sides}面のサイコロを振りました。結果は: {result}です。')
-
-@bot.command()
-async def test(ctx):
-    embed = discord.Embed(title="正常に動作しています。", color=discord.Colour.purple())
-    await ctx.send(embed=embed)
-
-@bot.command(name="履歴削除", description="メッセージ履歴を全て削除します。")
-async def 履歴削除(ctx):
-    channel = ctx.channel
-    messages = []
-    async for message in channel.history(limit=None):
-        messages.append(message)
-
-    for chunk in [messages[i:i + 100] for i in range(0, len(messages), 100)]:
-        await channel.delete_messages(chunk)
+from discord.ext import commands
+import random
+from dotenv import load_dotenv
 
 class HeroRoulette(commands.Cog):
     def __init__(self, bot):
@@ -316,9 +109,9 @@ class HeroRoulette(commands.Cog):
         embed.set_author(name=hero["name"], icon_url=hero["img"])
         return embed
 
-    @app_commands.command(name="ヒーロー設定", description="ロールなどを選んでランダムにヒーローを表示")
+    @app_commands.command(name="ルーレット設定", description="ヒーロールーレット設定")
     async def setup_roulette(self, interaction: discord.Interaction):
-        await interaction.response.send_message(view=RouletteSettingsView(self), ephemeral=True)
+        await interaction.response.send_message("ルーレット設定", view=RouletteSettingsView(self), ephemeral=True)
 
     @app_commands.command(name="ヒーロー", description="ランダムでヒーローを表示")
     async def random_hero_command(self, interaction: discord.Interaction):
@@ -339,22 +132,22 @@ class RouletteSettingsView(discord.ui.View):
         self.cog = cog
         self.update_buttons()
 
-    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":at:1249776411237941359")
+    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":at:1249625709517733941")
     async def attacker(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.toggle_setting("アタッカー", button)
         await self.update_message(interaction)
 
-    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":sp:1249776620039045280")
+    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":sp:1249625777235034195")
     async def sprinter(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.toggle_setting("スプリンター", button)
         await self.update_message(interaction)
 
-    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":gn:1249776475532562483")
+    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":gn:1249625749854490686")
     async def gunner(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.toggle_setting("ガンナー", button)
         await self.update_message(interaction)
 
-    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":tn:1249776553009615030")
+    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji=":tn:1249625807836414002")
     async def tank(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.toggle_setting("タンク", button)
         await self.update_message(interaction)
@@ -373,7 +166,7 @@ class RouletteSettingsView(discord.ui.View):
     async def reset(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.cog.reset_settings()
         self.update_buttons()
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(content="設定が初期化されました。", view=self)
         
     @discord.ui.button(label="実行", style=discord.ButtonStyle.success, row=2)
     async def execute(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -405,22 +198,22 @@ class RouletteSettingsView(discord.ui.View):
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 emoji_id = child.emoji.id if isinstance(child.emoji, discord.PartialEmoji) else None
-                if emoji_id == 1249776411237941359:  # :at:
+                if emoji_id == 1249625709517733941:  # :at:
                     if "アタッカー" in self.cog.selected_roles:
                         child.style = discord.ButtonStyle.primary
                     else:
                         child.style = discord.ButtonStyle.secondary
-                elif emoji_id == 1249776620039045280:  # :sp:
+                elif emoji_id == 1249625777235034195:  # :sp:
                     if "スプリンター" in self.cog.selected_roles:
                         child.style = discord.ButtonStyle.primary
                     else:
                         child.style = discord.ButtonStyle.secondary
-                elif emoji_id == 1249776475532562483:  # :gn:
+                elif emoji_id == 1249625749854490686:  # :gn:
                     if "ガンナー" in self.cog.selected_roles:
                         child.style = discord.ButtonStyle.primary
                     else:
                         child.style = discord.ButtonStyle.secondary
-                elif emoji_id == 1249776553009615030:  # :tn:
+                elif emoji_id == 1249625807836414002:  # :tn:
                     if "タンク" in self.cog.selected_roles:
                         child.style = discord.ButtonStyle.primary
                     else:
@@ -436,50 +229,20 @@ class RouletteSettingsView(discord.ui.View):
                     else:
                         child.style = discord.ButtonStyle.secondary
 
+intents = discord.Intents.default()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print(f'Logged in as {bot.user}!')
+
 @bot.event
 async def setup_hook():
     await bot.add_cog(HeroRoulette(bot))
 
-@bot.event
-async def on_message(message):
-    global model_engine
-    if message.author.bot:
-        return
-    if message.author == bot.user:
-        return
-
-    # メンションに反応
-    if bot.user in message.mentions:
-        try:
-            # メンション部分を削除してプロンプトを作成
-            prompt = message.content.replace(f'<@!{bot.user.id}>', '').strip()
-            if not prompt:
-                await message.channel.send("質問内容がありません")
-                return
-            
-            # OpenAIのChat APIを使用して応答を生成
-            completion = openai.ChatCompletion.create(
-                model=model_engine,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "botの名前は🦀です。送られてきた文章に対して返信してください。"
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-            )
-
-            response = completion.choices[0].message['content']
-            await message.channel.send(response)
-        except openai.error.RateLimitError:
-            await message.channel.send("現在のAPI使用量制限を超えています。プランのアップグレードや使用量の確認を行ってください。")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            await message.channel.send("エラーが発生しました。")
-
+# ボットトークンを入力してください
+load_dotenv()
+TOKEN = os.getenv('kani_TOKEN')
 
 bot.run(TOKEN)

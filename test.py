@@ -1,12 +1,12 @@
 import discord, os, random, asyncio, datetime, pytz, openai
 from discord.ext import commands
 from discord import app_commands
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-# load_dotenv()
+load_dotenv()
 
-#TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+#TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 openai.api_key = os.getenv('openai')
 model_engine = "gpt-3.5-turbo"
 
@@ -18,7 +18,7 @@ async def on_ready():
     print(f'ログインしました {bot.user}')
 
     # メッセージを送信するチャンネルを取得
-    target_channel_id = int(os.getenv('channel_id'))
+    target_channel_id = int(os.getenv('channel_id_kani'))
     target_channel = bot.get_channel(target_channel_id)
 
     # メッセージを送信

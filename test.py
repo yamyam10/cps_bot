@@ -7,7 +7,7 @@ load_dotenv()
 
 TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 #TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
-openai.api_key = os.getenv('openai')
+OPENAI_API_KEY = os.getenv('openai')
 model_engine = "gpt-3.5-turbo"
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())

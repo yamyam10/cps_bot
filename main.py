@@ -1,9 +1,9 @@
 import discord, os, random, asyncio, datetime, pytz, openai
 from discord.ext import commands
 from discord import app_commands
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-# load_dotenv()
+load_dotenv()
 
 #TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot

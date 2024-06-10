@@ -458,7 +458,7 @@ async def on_message(message):
                 return
             
             # OpenAIのChat APIを使用して応答を生成
-            completion = openai.ChatCompletion.create(
+            response = openai.ChatCompletion.create(
                 model=model_engine,
                 messages=[
                     {
@@ -472,10 +472,12 @@ async def on_message(message):
                 ],
             )
 
-            response = completion.choices[0].message['content']
-            await message.channel.send(response)
+            reply_content = response['choices'][0]['message']['content']
+            await message.channel.send(reply_content)
         except openai.error.RateLimitError:
             await message.channel.send("現在のAPI使用量制限を超えています。プランのアップグレードや使用量の確認を行ってください。")
+        except openai.error.AuthenticationError:
+            await message.channel.send("APIキーが間違っています。正しいAPIキーを設定してください。")
         except Exception as e:
             import traceback
             traceback.print_exc()

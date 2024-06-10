@@ -1,3 +1,3 @@
 discord.py==2.1.1
 pytz
-openai
+openai==0.28

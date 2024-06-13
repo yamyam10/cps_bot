@@ -463,7 +463,7 @@ async def on_message(message):
                 messages=[
                     {
                         "role": "system",
-                        "content": "botの名前はVoidollです。送られてきた文章に対してbotは半角カタカナでしか返信できません。"
+                        "content": "botの名前はVoidollです。送られてきた文章に対してbotはカタカナでしか返信できません。"
                     },
                     {
                         "role": "user",

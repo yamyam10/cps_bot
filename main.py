@@ -451,10 +451,8 @@ async def on_message(message):
     # メンションに反応
     if bot.user in message.mentions:
         try:
-            # メンション部分を削除してプロンプトを作成
-            prompt = message.content
-            for mention in message.mentions:
-                prompt = prompt.replace(f'<@!{mention.id}>', '').strip()
+            # プロンプトをそのまま使用
+            prompt = message.content.strip()
             if not prompt:
                 await message.channel.send("質問内容がありません")
                 return
@@ -465,7 +463,7 @@ async def on_message(message):
                 messages=[
                     {
                         "role": "system",
-                        "content": "botの名前はVoidollです。送られてきた文章に対してbotはカタカナ以外の返信できません。全ての文章をカタカナに変更して送信してください。"
+                        "content": "botの名前はVoidollです。送られてきた文章に対してbotはカタカナ以外の返信できません。"
                     },
                     {
                         "role": "user",

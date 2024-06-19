@@ -50,25 +50,25 @@ async def help(interaction: discord.Interaction):
     embed.add_field(name="", value="`/ダイス：`ダイスを振ってくれるよ。", inline=False)
     await interaction.response.send_message(embed=embed)
 
+# おみくじの結果と累積確率を定義
 OMIKUJI_RESULTS = [
-    (0.0, 0.0, "大凶", 0.05),
-    (1.0, 199.0, "吉", 0.2),
-    (200.0, 399.0, "中吉", 0.3),
-    (400.0, 499.0, "小吉", 0.15),
-    (500.0, 979.0, "末吉", 0.25),
-    (980.0, 999.9, "大吉", 0.1),
+    ("大凶", 0.05),
+    ("吉", 0.25),
+    ("中吉", 0.55),
+    ("小吉", 0.70),
+    ("末吉", 0.95),
+    ("大吉", 1.00)
 ]
 
 @bot.tree.command(name="おみくじ", description="運勢を占ってくれるよ。")
 async def おみくじ(interaction: discord.Interaction):
-    result = random.uniform(0, 999.9)
-    for omikuji_range in OMIKUJI_RESULTS:
-        start, end, title, probability = omikuji_range
-        if start <= result <= end:
+    result = random.random()
+    for title, cumulative_probability in OMIKUJI_RESULTS:
+        if result <= cumulative_probability:
             embed = discord.Embed(title=f'{interaction.user.mention} さんの運勢は「{title}」です！', color=discord.Colour.purple())
             await interaction.response.send_message(embed=embed)
             return
-    # 範囲外の場合はエラーメッセージを送信する
+    # 範囲外の場合はエラーメッセージを送信する（累積確率が正しければ発生しないはず）
     embed = discord.Embed(title="ERROR", description="運勢の取得中にエラーが発生しました。", color=discord.Colour.purple())
     await interaction.response.send_message(embed=embed)
 

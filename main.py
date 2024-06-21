@@ -52,12 +52,12 @@ async def help(interaction: discord.Interaction):
 
 # おみくじの結果と累積確率を定義
 OMIKUJI_RESULTS = [
-    ("大凶", 0.05),
+    ("大吉", 0.05),
     ("吉", 0.25),
     ("中吉", 0.55),
     ("小吉", 0.70),
     ("末吉", 0.95),
-    ("大吉", 1.00)
+    ("大凶", 1.00)
 ]
 
 @bot.tree.command(name="おみくじ", description="運勢を占ってくれるよ。")

@@ -2,3 +2,7 @@ discord.py==2.1.1
 pytz
 python-dotenv
 openai==0.28.0
+pytesseract
+pandas
+gspread
+oauth2client

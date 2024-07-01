@@ -24,4 +24,9 @@ try:
 
 except gspread.exceptions.APIError as e:
     print(f'APIエラーが発生しました: {e}')
+    if 'not supported' in str(e):
+        print("ドキュメント形式がサポートされていない可能性があります。")
+    exit()
+except Exception as e:
+    print(f'一般的なエラーが発生しました: {e}')
     exit()

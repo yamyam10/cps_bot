@@ -2,7 +2,7 @@ import discord
 import os
 from discord.ext import commands
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import requests
 from io import BytesIO
 import gspread
@@ -39,6 +39,7 @@ except gspread.exceptions.APIError as e:
     exit()
 except Exception as e:
     print(f'一般的なエラーが発生しました: {e}')
+    print(f'詳細: {str(e)}')
     exit()
 
 # Discordボットの設定
@@ -47,6 +48,14 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+def preprocess_image(image_path):
+    img = Image.open(image_path)
+    img = img.convert('L')  # グレースケールに変換
+    img = img.filter(ImageFilter.SHARPEN)  # シャープ化
+    img = img.point(lambda x: 0 if x < 140 else 255, '1')  # バイナリ化
+    img = img.resize((img.width * 2, img.height * 2))  # 解像度を2倍にする
+    return img
+
 # コマンドハンドラの追加
 @bot.command(name="試合結果追加")
 async def add_match_results(ctx):
@@ -54,11 +63,13 @@ async def add_match_results(ctx):
         for attachment in ctx.message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['png', 'jpg', 'jpeg']):
                 response = requests.get(attachment.url)
-                img = Image.open(BytesIO(response.content))
+                img_path = BytesIO(response.content)
+                img = preprocess_image(img_path)
 
                 try:
                     # OCR処理
-                    text = pytesseract.image_to_string(img, lang='jpn')
+                    custom_config = r'--oem 3 --psm 6'
+                    text = pytesseract.image_to_string(img, lang='jpn', config=custom_config)
                     print("OCR処理が完了しました。抽出されたテキスト：")
                     print(text)
 
@@ -68,15 +79,15 @@ async def add_match_results(ctx):
                     for line in lines:
                         if "pt" in line:
                             parts = line.split()
-                            name = parts[0]
-                            score = parts[1].replace("pt", "")
+                            name = " ".join(parts[:-2])
+                            score = parts[-2].replace("pt", "")
                             kills = parts[-1]
                             data.append([name, score, kills])
 
                     # Googleスプレッドシートに書き込み
                     print("Googleスプレッドシートにデータを書き込んでいます。")
                     sheet.clear()
-                    sheet.append_row(["名前", "スコア", "キル数"])
+                    sheet.append_row(["名前", "ポータル数", "キル数"])
                     for row in data:
                         sheet.append_row(row)
 

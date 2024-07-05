@@ -125,6 +125,7 @@ async def add_match_results(ctx):
                                 sheet.clear()
                                 sheet.append_row(["名前", "ポータル数", "キル数"])
                                 for row in data:
+                                    print(f"Appending row: {row}")  # デバッグ用
                                     sheet.append_row(row)
                             else:
                                 print("有効なデータが抽出されませんでした。")

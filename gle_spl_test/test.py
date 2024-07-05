@@ -7,6 +7,7 @@ import requests
 from io import BytesIO
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import asyncio
 
 # Tesseractのパスを設定（必要に応じて）
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -46,7 +47,15 @@ except Exception as e:
 TOKEN = os.getenv('kani_TOKEN')
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+
+class MyBot(commands.Bot):
+    async def on_ready(self):
+        print(f'Logged in as {self.user}')
+
+    async def on_resumed(self):
+        print('Resumed connection to Discord')
+
+bot = MyBot(command_prefix='!', intents=intents)
 
 def preprocess_image(image_path):
     img = Image.open(image_path)
@@ -79,7 +88,7 @@ async def add_match_results(ctx):
 
                 try:
                     # 指定された範囲
-                    name_region = (240, 1020, 600, 1730)
+                    name_region = (245, 1020, 600, 1730)
                     score_region = (270, 660, 870, 860)
                     kills_region = (940, 1020, 1075, 1730)
 
@@ -98,8 +107,9 @@ async def add_match_results(ctx):
                     kills_lines = kills_text.split('\n')
 
                     for name, score, kills in zip(name_lines, score_lines, kills_lines):
-                        if is_number(score.replace("", "")) and is_number(kills):
-                            data.append([name, score.replace("", ""), kills])
+                        clean_score = score.replace("pt", "").strip()
+                        if is_number(clean_score) and is_number(kills):
+                            data.append([name, clean_score, kills])
 
                     # Googleスプレッドシートに書き込み
                     print("Googleスプレッドシートにデータを書き込んでいます。")
@@ -118,5 +128,8 @@ async def add_match_results(ctx):
     else:
         await ctx.send('画像が添付されていません。')
 
-# ボットの起動
-bot.run(TOKEN)
+async def main():
+    async with bot:
+        await bot.start(TOKEN)
+
+asyncio.run(main())

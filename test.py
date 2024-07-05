@@ -56,6 +56,13 @@ def preprocess_image(image_path):
     img = img.resize((img.width * 2, img.height * 2))  # 解像度を2倍にする
     return img
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 # コマンドハンドラの追加
 @bot.command(name="試合結果追加")
 async def add_match_results(ctx):
@@ -79,7 +86,7 @@ async def add_match_results(ctx):
                     for line in lines:
                         if line.strip():  # 空行を除去
                             parts = line.split()
-                            if len(parts) >= 3:
+                            if len(parts) >= 3 and is_number(parts[-2].replace("pt", "")) and is_number(parts[-1]):
                                 name = " ".join(parts[:-2])
                                 score = parts[-2].replace("pt", "")
                                 kills = parts[-1]

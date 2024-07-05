@@ -9,13 +9,14 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import asyncio
 import time
+from dotenv import load_dotenv
 
 # Tesseractのパスを設定（必要に応じて）
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Google Sheets APIの設定
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("gle_spl_test/just-ratio-368201-5a8966c05bcb.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name("just-ratio-368201-5a8966c05bcb.json", scope)
 client = gspread.authorize(creds)
 spreadsheet_id = "1au449fTjlaDdiRriPN5OvDeBUc4-yWJQguPfvqMmmhw"
 
@@ -45,7 +46,8 @@ except Exception as e:
     exit()
 
 # Discordボットの設定
-TOKEN = os.getenv('kani_TOKEN')
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -79,6 +81,14 @@ def perform_ocr_on_region(image, region):
     text = pytesseract.image_to_string(cropped_img, lang='jpn+eng', config=custom_config)
     return text.strip()
 
+def filter_valid_data(lines):
+    filtered_lines = []
+    for line in lines:
+        line = line.strip()
+        if line and "|" not in line:
+            filtered_lines.append(line)
+    return filtered_lines
+
 @bot.command(name="試合結果追加")
 async def add_match_results(ctx):
     if ctx.message.attachments:
@@ -101,24 +111,27 @@ async def add_match_results(ctx):
 
                             # 名前のテキストを抽出
                             name_text = perform_ocr_on_region(img, name_region)
-                            name_lines = name_text.split('\n')
+                            name_lines = filter_valid_data(name_text.split('\n'))
                             print("Name Text:", name_lines)  # デバッグ用
 
                             # スコアのテキストを抽出
                             score_text = perform_ocr_on_region(img, score_region)
-                            score_lines = score_text.split('\n')
+                            score_lines = filter_valid_data(score_text.split('\n'))
                             print("Score Text:", score_lines)  # デバッグ用
 
                             # キル数のテキストを抽出
                             kills_text = perform_ocr_on_region(img, kills_region)
-                            kills_lines = kills_text.split('\n')
+                            kills_lines = filter_valid_data(kills_text.split('\n'))
                             print("Kills Text:", kills_lines)  # デバッグ用
+
+                            # デバッグ: 各リストの長さを確認
+                            print(f"Lengths -> Name: {len(name_lines)}, Score: {len(score_lines)}, Kills: {len(kills_lines)}")
 
                             for name, score, kills in zip(name_lines, score_lines, kills_lines):
                                 clean_score = score.replace("pt", "").strip()
-                                if "|" not in name and "|" not in clean_score and "|" not in kills:
-                                    if is_number(clean_score) and is_number(kills):
-                                        data.append([name, clean_score, kills])
+                                if is_number(clean_score) and is_number(kills):
+                                    data.append([name, clean_score, kills])
+                                    print(f"Valid data found: {name}, {clean_score}, {kills}")
 
                             # Googleスプレッドシートに書き込み
                             if data:

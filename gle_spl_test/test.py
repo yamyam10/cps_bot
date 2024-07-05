@@ -2,19 +2,20 @@ import discord
 import os
 from discord.ext import commands
 import pytesseract
-from PIL import Image, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter
 import requests
 from io import BytesIO
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import asyncio
+import time
 
 # Tesseractのパスを設定（必要に応じて）
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Google Sheets APIの設定
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("just-ratio-368201-5a8966c05bcb.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name("gle_spl_test/just-ratio-368201-5a8966c05bcb.json", scope)
 client = gspread.authorize(creds)
 spreadsheet_id = "1au449fTjlaDdiRriPN5OvDeBUc4-yWJQguPfvqMmmhw"
 
@@ -59,8 +60,10 @@ bot = MyBot(command_prefix='!', intents=intents)
 
 def preprocess_image(image_path):
     img = Image.open(image_path)
-    # グレースケールに変換しない
+    # 画像の前処理
     img = img.filter(ImageFilter.SHARPEN)  # シャープ化
+    enhancer = ImageEnhance.Contrast(img)
+    img = enhancer.enhance(2)  # コントラストを強調
     return img
 
 def is_number(s):
@@ -71,10 +74,9 @@ def is_number(s):
         return False
 
 def perform_ocr_on_region(image, region):
-    # 指定した領域を切り出し
     cropped_img = image.crop(region)
     custom_config = r'--oem 3 --psm 6'
-    text = pytesseract.image_to_string(cropped_img, lang='jpn', config=custom_config)
+    text = pytesseract.image_to_string(cropped_img, lang='jpn+eng', config=custom_config)
     return text.strip()
 
 @bot.command(name="試合結果追加")
@@ -82,49 +84,64 @@ async def add_match_results(ctx):
     if ctx.message.attachments:
         for attachment in ctx.message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['png', 'jpg', 'jpeg']):
-                response = requests.get(attachment.url)
-                img_path = BytesIO(response.content)
-                img = preprocess_image(img_path)
+                for attempt in range(3):  # 3回の再試行を行う
+                    try:
+                        response = requests.get(attachment.url, timeout=10)
+                        response.raise_for_status()
+                        img_path = BytesIO(response.content)
+                        img = preprocess_image(img_path)
 
-                try:
-                    # 指定された範囲
-                    name_region = (245, 1020, 600, 1730)
-                    score_region = (270, 660, 870, 860)
-                    kills_region = (940, 1020, 1075, 1730)
+                        try:
+                            # 指定された範囲
+                            name_region = (235, 1020, 600, 1730)
+                            score_region = (270, 660, 870, 860)
+                            kills_region = (940, 1020, 1075, 1730)
 
-                    data = []
+                            data = []
 
-                    # 名前のテキストを抽出
-                    name_text = perform_ocr_on_region(img, name_region)
-                    name_lines = name_text.split('\n')
+                            # 名前のテキストを抽出
+                            name_text = perform_ocr_on_region(img, name_region)
+                            name_lines = name_text.split('\n')
+                            print("Name Text:", name_text)  # デバッグ用
 
-                    # スコアのテキストを抽出
-                    score_text = perform_ocr_on_region(img, score_region)
-                    score_lines = score_text.split('\n')
+                            # スコアのテキストを抽出
+                            score_text = perform_ocr_on_region(img, score_region)
+                            score_lines = score_text.split('\n')
+                            print("Score Text:", score_text)  # デバッグ用
 
-                    # キル数のテキストを抽出
-                    kills_text = perform_ocr_on_region(img, kills_region)
-                    kills_lines = kills_text.split('\n')
+                            # キル数のテキストを抽出
+                            kills_text = perform_ocr_on_region(img, kills_region)
+                            kills_lines = kills_text.split('\n')
+                            print("Kills Text:", kills_text)  # デバッグ用
 
-                    for name, score, kills in zip(name_lines, score_lines, kills_lines):
-                        clean_score = score.replace("pt", "").strip()
-                        if is_number(clean_score) and is_number(kills):
-                            data.append([name, clean_score, kills])
+                            for name, score, kills in zip(name_lines, score_lines, kills_lines):
+                                clean_score = score.replace("pt", "").strip()
+                                if is_number(clean_score) and is_number(kills):
+                                    data.append([name, clean_score, kills])
 
-                    # Googleスプレッドシートに書き込み
-                    print("Googleスプレッドシートにデータを書き込んでいます。")
-                    sheet.clear()
-                    sheet.append_row(["名前", "ポータル数", "キル数"])
-                    for row in data:
-                        sheet.append_row(row)
+                            # Googleスプレッドシートに書き込み
+                            if data:
+                                print("Googleスプレッドシートにデータを書き込んでいます。")
+                                sheet.clear()
+                                sheet.append_row(["名前", "ポータル数", "キル数"])
+                                for row in data:
+                                    sheet.append_row(row)
+                            else:
+                                print("有効なデータが抽出されませんでした。")
 
-                    await ctx.send('データがスプレッドシートに正常に書き込まれました')
-                except gspread.exceptions.APIError as e:
-                    print(f'APIエラーが発生しました: {e}')
-                    await ctx.send(f'APIエラーが発生しました: {e}')
-                except Exception as e:
-                    print(f'エラーが発生しました: {e}')
-                    await ctx.send(f'エラーが発生しました: {e}')
+                            await ctx.send('データがスプレッドシートに正常に書き込まれました')
+                            break  # 成功した場合はループを抜ける
+                        except gspread.exceptions.APIError as e:
+                            print(f'APIエラーが発生しました: {e}')
+                            await ctx.send(f'APIエラーが発生しました: {e}')
+                        except Exception as e:
+                            print(f'エラーが発生しました: {e}')
+                            await ctx.send(f'エラーが発生しました: {e}')
+                    except requests.exceptions.RequestException as e:
+                        print(f"リクエストエラーが発生しました: {e}. 再試行します...")
+                        time.sleep(2 ** attempt)  # 再試行までの待機時間を指数的に増加
+                else:
+                    await ctx.send('リクエストが失敗しました。後でもう一度試してください。')
     else:
         await ctx.send('画像が添付されていません。')
 

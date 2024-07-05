@@ -15,7 +15,7 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("just-ratio-368201-5a8966c05bcb.json", scope)
 client = gspread.authorize(creds)
-spreadsheet_id = "NEW_SPREADSHEET_ID"  # 新しいスプレッドシートIDに更新
+spreadsheet_id = "1au449fTjlaDdiRriPN5OvDeBUc4-yWJQguPfvqMmmhw"
 
 try:
     # スプレッドシートを開く
@@ -77,12 +77,13 @@ async def add_match_results(ctx):
                     lines = text.split('\n')
                     data = []
                     for line in lines:
-                        if "pt" in line:
+                        if line.strip():  # 空行を除去
                             parts = line.split()
-                            name = " ".join(parts[:-2])
-                            score = parts[-2].replace("pt", "")
-                            kills = parts[-1]
-                            data.append([name, score, kills])
+                            if len(parts) >= 3:
+                                name = " ".join(parts[:-2])
+                                score = parts[-2].replace("pt", "")
+                                kills = parts[-1]
+                                data.append([name, score, kills])
 
                     # Googleスプレッドシートに書き込み
                     print("Googleスプレッドシートにデータを書き込んでいます。")

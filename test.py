@@ -129,6 +129,7 @@ async def add_match_results(ctx):
 
                             for name, score, kills in zip(name_lines, score_lines, kills_lines):
                                 clean_score = score.replace("pt", "").strip()
+                                print(f"Parsed Data - Name: {name}, Score: {clean_score}, Kills: {kills}")
                                 if is_number(clean_score) and is_number(kills):
                                     data.append([name, clean_score, kills])
                                     print(f"Valid data found: {name}, {clean_score}, {kills}")
@@ -141,6 +142,7 @@ async def add_match_results(ctx):
                                 for row in data:
                                     print(f"Appending row: {row}")  # デバッグ用
                                     sheet.append_row(row)
+                                print("書き込み完了")
                             else:
                                 print("有効なデータが抽出されませんでした。")
 

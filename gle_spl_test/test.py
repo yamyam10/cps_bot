@@ -2,7 +2,7 @@ import discord
 import os
 from discord.ext import commands
 import pytesseract
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageFilter
 import requests
 from io import BytesIO
 import gspread
@@ -50,10 +50,8 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 def preprocess_image(image_path):
     img = Image.open(image_path)
-    img = img.convert('L')  # グレースケールに変換
+    # グレースケールに変換しない
     img = img.filter(ImageFilter.SHARPEN)  # シャープ化
-    img = img.point(lambda x: 0 if x < 140 else 255, '1')  # バイナリ化
-    img = img.resize((img.width * 2, img.height * 2))  # 解像度を2倍にする
     return img
 
 def is_number(s):
@@ -63,7 +61,13 @@ def is_number(s):
     except ValueError:
         return False
 
-# コマンドハンドラの追加
+def perform_ocr_on_region(image, region):
+    # 指定した領域を切り出し
+    cropped_img = image.crop(region)
+    custom_config = r'--oem 3 --psm 6'
+    text = pytesseract.image_to_string(cropped_img, lang='jpn', config=custom_config)
+    return text.strip()
+
 @bot.command(name="試合結果追加")
 async def add_match_results(ctx):
     if ctx.message.attachments:
@@ -74,23 +78,28 @@ async def add_match_results(ctx):
                 img = preprocess_image(img_path)
 
                 try:
-                    # OCR処理
-                    custom_config = r'--oem 3 --psm 6'
-                    text = pytesseract.image_to_string(img, lang='jpn', config=custom_config)
-                    print("OCR処理が完了しました。抽出されたテキスト：")
-                    print(text)
+                    # 指定された範囲
+                    name_region = (240, 1020, 600, 1730)
+                    score_region = (270, 660, 870, 860)
+                    kills_region = (940, 1020, 1075, 1730)
 
-                    # テキストの解析
-                    lines = text.split('\n')
                     data = []
-                    for line in lines:
-                        if line.strip():  # 空行を除去
-                            parts = line.split()
-                            if len(parts) >= 3 and is_number(parts[-2].replace("pt", "")) and is_number(parts[-1]):
-                                name = " ".join(parts[:-2])
-                                score = parts[-2].replace("pt", "")
-                                kills = parts[-1]
-                                data.append([name, score, kills])
+
+                    # 名前のテキストを抽出
+                    name_text = perform_ocr_on_region(img, name_region)
+                    name_lines = name_text.split('\n')
+
+                    # スコアのテキストを抽出
+                    score_text = perform_ocr_on_region(img, score_region)
+                    score_lines = score_text.split('\n')
+
+                    # キル数のテキストを抽出
+                    kills_text = perform_ocr_on_region(img, kills_region)
+                    kills_lines = kills_text.split('\n')
+
+                    for name, score, kills in zip(name_lines, score_lines, kills_lines):
+                        if is_number(score.replace("", "")) and is_number(kills):
+                            data.append([name, score.replace("", ""), kills])
 
                     # Googleスプレッドシートに書き込み
                     print("Googleスプレッドシートにデータを書き込んでいます。")

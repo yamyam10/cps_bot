@@ -102,22 +102,23 @@ async def add_match_results(ctx):
                             # 名前のテキストを抽出
                             name_text = perform_ocr_on_region(img, name_region)
                             name_lines = name_text.split('\n')
-                            print("Name Text:", name_text)  # デバッグ用
+                            print("Name Text:", name_lines)  # デバッグ用
 
                             # スコアのテキストを抽出
                             score_text = perform_ocr_on_region(img, score_region)
                             score_lines = score_text.split('\n')
-                            print("Score Text:", score_text)  # デバッグ用
+                            print("Score Text:", score_lines)  # デバッグ用
 
                             # キル数のテキストを抽出
                             kills_text = perform_ocr_on_region(img, kills_region)
                             kills_lines = kills_text.split('\n')
-                            print("Kills Text:", kills_text)  # デバッグ用
+                            print("Kills Text:", kills_lines)  # デバッグ用
 
                             for name, score, kills in zip(name_lines, score_lines, kills_lines):
                                 clean_score = score.replace("pt", "").strip()
-                                if is_number(clean_score) and is_number(kills):
-                                    data.append([name, clean_score, kills])
+                                if "|" not in name and "|" not in clean_score and "|" not in kills:
+                                    if is_number(clean_score) and is_number(kills):
+                                        data.append([name, clean_score, kills])
 
                             # Googleスプレッドシートに書き込み
                             if data:

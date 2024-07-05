@@ -8,7 +8,7 @@ from io import BytesIO
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import asyncio
-import time
+import re
 from dotenv import load_dotenv
 
 # Tesseractのパスを設定（必要に応じて）
@@ -47,7 +47,7 @@ except Exception as e:
 
 # Discordボットの設定
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv('kani_TOKEN')
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -75,11 +75,17 @@ def is_number(s):
     except ValueError:
         return False
 
+def clean_text(text):
+    # 余分な文字や特殊文字を取り除く
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
 def perform_ocr_on_region(image, region):
     cropped_img = image.crop(region)
     custom_config = r'--oem 3 --psm 6'
     text = pytesseract.image_to_string(cropped_img, lang='jpn+eng', config=custom_config)
-    return text.strip()
+    return clean_text(text)
 
 def filter_valid_data(lines):
     filtered_lines = []

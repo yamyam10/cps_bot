@@ -162,7 +162,6 @@ async def add_match_results(ctx):
                             await ctx.send(f'エラーが発生しました: {e}')
                     except requests.exceptions.RequestException as e:
                         print(f"リクエストエラーが発生しました: {e}. 再試行します...")
-                        time.sleep(2 ** attempt)  # 再試行までの待機時間を指数的に増加
                 else:
                     await ctx.send('リクエストが失敗しました。後でもう一度試してください。')
     else:

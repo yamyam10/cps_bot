@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-#TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+#TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 openai.api_key = os.getenv('openai')
 model_engine = "gpt-3.5-turbo"
 
@@ -456,7 +456,6 @@ async def on_message_delete(message):
         embed.add_field(name="チャンネル", value=message.channel.name, inline=True)
         embed.set_footer(text=f"メッセージID: {message.id}")
         await log_channel.send(embed=embed)
-
 
 @bot.event
 async def on_message(message):

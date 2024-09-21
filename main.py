@@ -443,13 +443,11 @@ async def setup_hook():
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:
-        return  # Botが送信したメッセージは無視する
+        return
 
-    # メッセージが削除された時にログを送るチャンネルID
-    log_channel_id = int(os.getenv('channel_id'))  # 特定のチャンネルIDを指定
+    log_channel_id = int(os.getenv('channel_id_message'))
     log_channel = bot.get_channel(log_channel_id)
 
-    # 削除されたメッセージの内容をログチャンネルに送信
     if log_channel:
         embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content}", color=discord.Color.red())
         embed.add_field(name="ユーザー", value=message.author, inline=True)

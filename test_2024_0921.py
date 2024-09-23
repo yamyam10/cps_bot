@@ -440,8 +440,6 @@ class RouletteSettingsView(discord.ui.View):
 async def setup_hook():
     await bot.add_cog(HeroRoulette(bot))
 
-message_cache = {}
-
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:

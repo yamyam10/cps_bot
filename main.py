@@ -449,12 +449,20 @@ async def on_message_delete(message):
     log_channel = bot.get_channel(log_channel_id)
 
     if log_channel:
-        embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content}", color=discord.Color.red())
-        embed.add_field(name="ユーザー", value=message.author, inline=True)
-        embed.add_field(name="チャンネル", value=message.channel.name, inline=True)
+        if not message.content and message.attachments:
+            embed = discord.Embed(title="メッセージ削除", description="画像ファイル", color=discord.Color.red())
+        else:
+            embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content or '（メッセージなし）'}", color=discord.Color.red())
+
+        embed.add_field(name="ユーザー", value=f"{message.author.mention}（{message.author}）", inline=True)
+        embed.add_field(name="チャンネル", value=message.channel.mention, inline=True)
         embed.set_footer(text=f"メッセージID: {message.id}")
+
         await log_channel.send(embed=embed)
 
+        if message.attachments:
+            for attachment in message.attachments:
+                await log_channel.send(f"削除されたファイル: {attachment.url}")
 
 @bot.event
 async def on_message(message):

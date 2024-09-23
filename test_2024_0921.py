@@ -440,22 +440,36 @@ class RouletteSettingsView(discord.ui.View):
 async def setup_hook():
     await bot.add_cog(HeroRoulette(bot))
 
+message_cache = {}
+
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:
         return  # Botが送信したメッセージは無視する
 
-    # メッセージが削除された時にログを送るチャンネルID
+    # 環境変数からログチャンネルのIDを取得
     log_channel_id = int(os.getenv('channel_id'))  # 特定のチャンネルIDを指定
     log_channel = bot.get_channel(log_channel_id)
 
-    # 削除されたメッセージの内容をログチャンネルに送信
+    # メッセージが削除された場合に、テキストまたは画像かどうかを判断してログを送信
     if log_channel:
-        embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content}", color=discord.Color.red())
-        embed.add_field(name="ユーザー", value=message.author, inline=True)
-        embed.add_field(name="チャンネル", value=message.channel.name, inline=True)
+        # メッセージ内容が無い場合は「画像ファイル」と表示
+        if not message.content and message.attachments:
+            embed = discord.Embed(title="メッセージ削除", description="画像ファイル", color=discord.Color.red())
+        else:
+            embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content or '（メッセージなし）'}", color=discord.Color.red())
+
+        embed.add_field(name="ユーザー", value=f"{message.author.mention}（{message.author}）", inline=True)
+        embed.add_field(name="チャンネル", value=message.channel.mention, inline=True)
         embed.set_footer(text=f"メッセージID: {message.id}")
+        
+        # テキストメッセージまたは「画像ファイル」をログチャンネルに送信
         await log_channel.send(embed=embed)
+
+        # 画像やファイルが含まれている場合は、そのファイルのURLをログチャンネルに送信
+        if message.attachments:
+            for attachment in message.attachments:
+                await log_channel.send(f"削除されたファイル: {attachment.url}")
 
 @bot.event
 async def on_message(message):

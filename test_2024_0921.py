@@ -1,4 +1,4 @@
-import discord, os, random, asyncio, datetime, pytz, openai
+import discord, os, random, asyncio, datetime, pytz, openai, aiohttp
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
@@ -437,37 +437,39 @@ class RouletteSettingsView(discord.ui.View):
                         child.style = discord.ButtonStyle.secondary
 
 @bot.event
-async def setup_hook():
-    await bot.add_cog(HeroRoulette(bot))
-
-@bot.event
 async def on_message_delete(message):
     if message.author.bot:
-        return  # Botが送信したメッセージは無視する
+        return
 
-    # 環境変数からログチャンネルのIDを取得
-    log_channel_id = int(os.getenv('channel_id'))  # 特定のチャンネルIDを指定
+    log_channel_id = int(os.getenv('channel_id'))
     log_channel = bot.get_channel(log_channel_id)
 
-    # メッセージが削除された場合に、テキストまたは画像かどうかを判断してログを送信
     if log_channel:
-        # メッセージ内容が無い場合は「画像ファイル」と表示
         if not message.content and message.attachments:
-            embed = discord.Embed(title="メッセージ削除", description="画像ファイル", color=discord.Color.red())
+            embed = discord.Embed(title="メッセージ削除", description="添付ファイル付き", color=discord.Color.red())
         else:
             embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content or '（メッセージなし）'}", color=discord.Color.red())
 
         embed.add_field(name="ユーザー", value=f"{message.author.mention}（{message.author}）", inline=True)
         embed.add_field(name="チャンネル", value=message.channel.mention, inline=True)
         embed.set_footer(text=f"メッセージID: {message.id}")
-        
-        # テキストメッセージまたは「画像ファイル」をログチャンネルに送信
+
         await log_channel.send(embed=embed)
 
-        # 画像やファイルが含まれている場合は、そのファイルのURLをログチャンネルに送信
         if message.attachments:
+            temp_folder = "temp_files"
+            os.makedirs(temp_folder, exist_ok=True)
+
             for attachment in message.attachments:
-                await log_channel.send(f"削除されたファイル: {attachment.url}")
+                file_path = os.path.join(temp_folder, attachment.filename)
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(attachment.url) as resp:
+                        if resp.status == 200:
+                            with open(file_path, 'wb') as f:
+                                f.write(await resp.read())
+                            await log_channel.send(f"削除されたファイル: {attachment.filename}", file=discord.File(file_path))
+                            await asyncio.sleep(60)
+                            os.remove(file_path)
 
 @bot.event
 async def on_message(message):

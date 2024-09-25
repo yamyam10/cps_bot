@@ -1,4 +1,4 @@
-import discord, os, random, asyncio, datetime, pytz, openai
+import discord, os, random, asyncio, datetime, pytz, openai, aiohttp
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
@@ -450,7 +450,7 @@ async def on_message_delete(message):
 
     if log_channel:
         if not message.content and message.attachments:
-            embed = discord.Embed(title="メッセージ削除", description="画像ファイル", color=discord.Color.red())
+            embed = discord.Embed(title="メッセージ削除", description="添付ファイル付き", color=discord.Color.red())
         else:
             embed = discord.Embed(title="メッセージ削除", description=f"削除されたメッセージ: {message.content or '（メッセージなし）'}", color=discord.Color.red())
 
@@ -461,8 +461,19 @@ async def on_message_delete(message):
         await log_channel.send(embed=embed)
 
         if message.attachments:
+            temp_folder = "temp_files"
+            os.makedirs(temp_folder, exist_ok=True)
+
             for attachment in message.attachments:
-                await log_channel.send(f"削除されたファイル: {attachment.url}")
+                file_path = os.path.join(temp_folder, attachment.filename)
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(attachment.url) as resp:
+                        if resp.status == 200:
+                            with open(file_path, 'wb') as f:
+                                f.write(await resp.read())
+                            await log_channel.send(f"削除されたファイル: {attachment.filename}", file=discord.File(file_path))
+                            await asyncio.sleep(60)
+                            os.remove(file_path)
 
 @bot.event
 async def on_message(message):

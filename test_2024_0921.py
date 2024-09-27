@@ -297,7 +297,9 @@ class HeroRoulette(commands.Cog):
             {"id": 79, "name": "デンジ", "color": 0xffd734, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510159110204/B202C319-F7FA-42AF-8711-544CDE0D1A3F.jpg"},
             {"id": 80, "name": "パワー", "color": 0xe76455, "type": "コラボ", "role": "スプリンター", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510381666414/CD2FA0E7-52DC-4A11-9D26-4554811DD781.jpg"},
             {"id": 81, "name": "シノン", "color": 0x18989b, "type": "コラボ", "role": "ガンナー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510595444776/0770644E-F05E-49A8-A8C2-59F8F929498E.jpg"},
-            {"id": 82, "name": "ターニャ・デグレチャフ", "color": 0x47574f, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510805028915/37139A0F-1D30-4EF4-9A02-C42240080BBF.jpg"}
+            {"id": 82, "name": "ターニャ・デグレチャフ", "color": 0x47574f, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510805028915/37139A0F-1D30-4EF4-9A02-C42240080BBF.jpg"},
+            {"id": 83, "name": "鬼ヶ式 うら", "color": 0xb7a79e, "type": "オリジナル", "role": "タンク", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1289240020607045653/2EC4D3C2-CB84-44D6-AE0C-8B2C8D0924C7.jpg"},
+            {"id": 84, "name": "コラプス", "color": 0x8a57fb, "type": "オリジナル", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1289240154309136445/F7F9E844-4FCB-4E4C-8579-487DD43A6B28.jpg"}
         ]
         self.reset_settings()
 

@@ -168,7 +168,7 @@ async def チーム分け(interaction: discord.Interaction, role: discord.Role):
         pass
 
 @bot.tree.command(name="vcチーム分け", description="ボイスチャンネルにいるメンバーをチーム分けします。")
-async def チーム分け(interaction: discord.Interaction, channel: discord.VoiceChannel):
+async def vcチーム分け(interaction: discord.Interaction, channel: discord.VoiceChannel):
     await interaction.response.defer()
 
     if not discord.utils.get(interaction.user.roles, name="管理者"):

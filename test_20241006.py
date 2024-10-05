@@ -130,24 +130,24 @@ async def おみくじ(interaction: discord.Interaction):
     embed = discord.Embed(title="ERROR", description="運勢の取得中にエラーが発生しました。", color=discord.Colour.purple())
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="チーム分け", description="チーム分けをしてくれるよ。")
-async def チーム分け(interaction: discord.Interaction, role: discord.Role):
-    # ユーザーに応答を返す前に、処理が実行中であることを示す
+@bot.tree.command(name="チーム分け", description="ボイスチャンネルにいるメンバーをチーム分けします。")
+async def チーム分け(interaction: discord.Interaction, channel: discord.VoiceChannel):
     await interaction.response.defer()
 
-    # 管理者ロールがない場合は無視
     if not discord.utils.get(interaction.user.roles, name="管理者"):
         await interaction.followup.send(embed=discord.Embed(title='このコマンドは管理者のみが実行できます。', color=discord.Colour.purple()))
         return
 
-    # ロールに属するメンバーを取得してシャッフル
-    members = role.members
+    members = [member for member in channel.members if not member.bot]
+
+    if len(members) == 0:
+        await interaction.followup.send("ボイスチャンネルにメンバーがいません。")
+        return
+
     random.shuffle(members)
 
-    # チーム分け
     teams = [members[i:i + 3] for i in range(0, len(members), 3)]
 
-    # チームごとにメッセージとロールを作成・付与
     messages = []
     for i, team in enumerate(teams):
         team_name = chr(ord("A") + i)
@@ -159,7 +159,6 @@ async def チーム分け(interaction: discord.Interaction, role: discord.Role):
         team_role = discord.utils.get(interaction.guild.roles, name=role_name) or await interaction.guild.create_role(name=role_name, mentionable=True)
         await asyncio.gather(*[member.add_roles(team_role) for member in team])
 
-    # メッセージを一度に送信
     try:
         await interaction.followup.send("\n".join(messages))
         await asyncio.sleep(1)

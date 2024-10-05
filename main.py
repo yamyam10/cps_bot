@@ -36,7 +36,7 @@ gspread_client = gspread.authorize(creds)  # gspread用のクライアント
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')
-CHANNEL_ID = int(os.getenv('channel_id_kani'))
+CHANNEL_ID = int(os.getenv('channel_id_spreadsheet'))
 
 last_row = 0
 

@@ -7,4 +7,5 @@ pandas
 gspread
 oauth2client
 aiohttp
-gspread oauth2client
+gspread
+oauth2client

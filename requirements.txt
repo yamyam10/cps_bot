@@ -6,3 +6,5 @@ pytesseract
 pandas
 gspread
 oauth2client
+aiohttp
+gspread oauth2client

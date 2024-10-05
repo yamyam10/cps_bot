@@ -1,6 +1,7 @@
-import discord, os, random, asyncio, datetime, pytz, openai, aiohttp
-from discord.ext import commands
+import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract
+from discord.ext import commands, tasks
 from discord import app_commands
+from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,6 +13,32 @@ model_engine = "gpt-3.5-turbo"
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 bot.remove_command("help")
+
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+private_key = os.getenv("GOOGLE_PRIVATE_KEY").replace("\\n", "\n")
+creds_data = {
+    "type": "service_account",
+    "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+    "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
+    "private_key": private_key,
+    "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
+    "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv('GOOGLE_CLIENT_EMAIL')}"
+}
+
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_data, scope)
+gspread_client = gspread.authorize(creds)  # gspread用のクライアント
+
+SPREADSHEET_ID = os.getenv('spreadsheet_id')
+SHEET_NAME = os.getenv('sheet_name')
+CHANNEL_ID = int(os.getenv('channel_id_kani'))
+
+last_row = 0
 
 @bot.event
 async def on_ready():
@@ -36,6 +63,37 @@ async def on_ready():
         print(f"{len(synced)}個のコマンドを同期しました。")
     except Exception as e:
         print(e)
+
+    # シート監視タスクをバックグラウンドで開始
+    check_for_updates.start()
+
+@tasks.loop(seconds=30)  # 30秒ごとに実行
+async def check_for_updates():
+    global last_row
+
+    try:
+        # シートのデータを取得
+        sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
+        data = sheet.get_all_values()
+
+        # 新しい行が追加されているかを確認
+        if len(data) > last_row:
+            new_row = data[-1]  # 最後の行を取得
+            last_row = len(data)
+
+            # 埋め込みメッセージの作成
+            embed = discord.Embed(
+                title="匿名意見箱に新しいデータが追加されました！",
+                color=discord.Colour.purple()
+            )
+            embed.add_field(name="", value=str(new_row), inline=False)
+
+            # 特定のチャンネルに通知を送信
+            channel = bot.get_channel(CHANNEL_ID)
+            await channel.send(embed=embed)
+
+    except Exception as e:
+        print(f"シートの更新チェック中にエラーが発生しました: {e}")
 
 @bot.tree.command(name="help", description="コマンドの詳細表示")
 async def help(interaction: discord.Interaction):

@@ -37,18 +37,16 @@ creds_data = {
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_data, scope)
-gspread_client = gspread.authorize(creds)  # gspread用のクライアント
+gspread_client = gspread.authorize(creds)
 last_row = 0
 
 @bot.event
 async def on_ready():
     print(f'ログインしました {bot.user}')
 
-    # メッセージを送信するチャンネルを取得
     target_channel_id = int(os.getenv('channel_id'))
     target_channel = bot.get_channel(target_channel_id)
 
-    # メッセージを送信
     if target_channel:
         japan_timezone = pytz.timezone('Asia/Tokyo')
         now = datetime.datetime.now(japan_timezone)
@@ -57,17 +55,15 @@ async def on_ready():
     else:
         print("指定されたチャンネルが見つかりません。")
 
-    # スラッシュコマンド同期
     try:
         synced = await bot.tree.sync()
         print(f"{len(synced)}個のコマンドを同期しました。")
     except Exception as e:
         print(e)
 
-    # シート監視タスクをバックグラウンドで開始
     check_for_updates.start()
 
-@tasks.loop(seconds=30)  # 30秒ごとに実行
+@tasks.loop(seconds=30)
 async def check_for_updates():
     global last_row
 
@@ -109,7 +105,6 @@ async def help(interaction: discord.Interaction):
     embed.add_field(name="", value="`/ダイス：`ダイスを振ってくれるよ。", inline=False)
     await interaction.response.send_message(embed=embed)
 
-# おみくじの結果と累積確率を定義
 OMIKUJI_RESULTS = [
     ("大吉", 0.05),
     ("吉", 0.25),

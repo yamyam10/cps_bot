@@ -8,6 +8,11 @@ load_dotenv()
 
 #TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+
+SPREADSHEET_ID = os.getenv('spreadsheet_id')
+SHEET_NAME = os.getenv('sheet_name')
+CHANNEL_ID = int(os.getenv('channel_id_spreadsheet'))
+
 openai.api_key = os.getenv('openai')
 model_engine = "gpt-3.5-turbo"
 
@@ -33,11 +38,6 @@ creds_data = {
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_data, scope)
 gspread_client = gspread.authorize(creds)  # gspread用のクライアント
-
-SPREADSHEET_ID = os.getenv('spreadsheet_id')
-SHEET_NAME = os.getenv('sheet_name')
-CHANNEL_ID = int(os.getenv('channel_id_spreadsheet'))
-
 last_row = 0
 
 @bot.event

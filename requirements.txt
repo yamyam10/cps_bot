@@ -9,3 +9,5 @@ oauth2client
 aiohttp
 gspread
 oauth2client
+yt-dlp
+PyNaCl

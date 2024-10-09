@@ -82,17 +82,15 @@ async def on_voice_state_update(member, before, after):
             await channel.send(embed=embed)
 
 async def play_next(ctx):
-    # 通話に誰もいない場合、退出
+    # 再生中に接続が切れていないかを確認する処理
     voice_client = voice_clients.get(ctx.guild.id)
-    if voice_client is not None and len(voice_client.channel.members) == 1:  # botだけが残っている場合
-        await voice_client.disconnect()
-        embed = discord.Embed(title="Disconnected", description="誰も通話にいないため、ボイスチャンネルから切断しました。", color=discord.Color.red())
-        await ctx.send(embed=embed)
-
-        del voice_clients[ctx.guild.id]
-        del music_queue[ctx.guild.id]
-        del now_playing[ctx.guild.id]
-        return
+    if voice_client is not None and not voice_client.is_connected():
+        try:
+            # 再接続処理を試みる
+            await voice_client.connect()
+        except Exception as e:
+            print(f"再接続に失敗しました: {e}")
+            return
 
     if len(music_queue[ctx.guild.id]) > 0:
         next_song = music_queue[ctx.guild.id].popleft()

@@ -1,0 +1,16 @@
+version: '3'
+services:
+  bot1:
+    build: .
+    command: python main.py
+  bot2:
+    build: .
+    volumes:
+      - .:/bot
+    depends_on:
+      - voicevox
+    command: python readbot.py
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    ports:
+      - '50021:50021'

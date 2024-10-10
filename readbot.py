@@ -20,6 +20,10 @@ async def on_ready():
 # 入退室イベントのトリガー
 @bot.event
 async def on_voice_state_update(member, before, after):
+    # ボット自身が接続・切断した場合は処理をスキップ
+    if member.id == bot.user.id:
+        return
+
     if before.channel is None and after.channel is not None:
         # ユーザーがチャンネルに参加したとき
         text = f"{member.display_name} がボイスチャンネルに参加しました"
@@ -46,14 +50,19 @@ async def generate_and_play_voice(member, text, voice_channel):
         f.write(synthesis_response.content)
 
     # ボイスチャンネルに接続
-    vc = None
-    if not member.guild.voice_client:
+    vc = member.guild.voice_client
+    if not vc:
+        # もしボットがまだ接続されていない場合は接続
         vc = await voice_channel.connect()
-    else:
-        vc = member.guild.voice_client
+
+    # すでに再生中か確認して、再生中であれば待機
+    while vc.is_playing():
+        await asyncio.sleep(1)
 
     # 音声を再生
     vc.play(FFmpegPCMAudio("voice_entry_exit.wav"))
+    
+    # 再生が終わるまで待機
     while vc.is_playing():
         await asyncio.sleep(1)
 
@@ -67,11 +76,14 @@ async def read_message(ctx):
         await ctx.send("ボイスチャンネルに接続してください")
         return
 
+    # すでに接続されているか確認
+    vc = ctx.voice_client
+    if not vc:  # もしボットがまだ接続されていなければ接続する
+        vc = await ctx.author.voice.channel.connect()
+
     embed = discord.Embed(title="読み上げ", url="https://twitter.com/miyavi1117?s=20", color=discord.Color.purple())
     embed.add_field(name="", value="ボイスチャットの接続に成功しました", inline=False)
     await ctx.send(embed=embed)
-
-    vc = await ctx.author.voice.channel.connect()
 
     try:
         while True:
@@ -94,8 +106,14 @@ async def read_message(ctx):
             with open("voice.wav", "wb") as f:
                 f.write(synthesis_response.content)
 
+            # すでに再生中か確認して、再生中であれば待機
+            while vc.is_playing():
+                await asyncio.sleep(1)
+
             # 音声を再生
             vc.play(FFmpegPCMAudio("voice.wav"))
+
+            # 再生が終わるまで待機
             while vc.is_playing():
                 await asyncio.sleep(1)
 
@@ -104,7 +122,8 @@ async def read_message(ctx):
                 await vc.disconnect()
                 break
     finally:
-        await vc.disconnect()
+        if vc.is_connected():
+            await vc.disconnect()
 
 @bot.command(name="切断", description="ボイスチャンネルから切断")
 async def disconnect(ctx):
@@ -113,6 +132,7 @@ async def disconnect(ctx):
         await ctx.send(embed=embed)
         return
 
+    # ボイスチャンネルから切断
     await ctx.voice_client.disconnect()
     embed = discord.Embed(title="切断", url="https://twitter.com/miyavi1117?s=20", color=discord.Color.purple())
     embed.add_field(name="", value="ボイスチャンネルから切断に成功しました", inline=False)

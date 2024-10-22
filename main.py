@@ -91,6 +91,10 @@ async def check_for_updates():
     except Exception as e:
         print(f"シートの更新チェック中にエラーが発生しました: {e}")
 
+# タスクを開始する前に、すでに実行中か確認
+if not check_for_updates.is_running():
+    check_for_updates.start()
+
 @bot.tree.command(name="help", description="コマンドの詳細表示")
 async def help(interaction: discord.Interaction):
     embed = discord.Embed(title="コマンド一覧", color=discord.Colour.purple())

@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import requests
 import os
@@ -12,10 +13,16 @@ TOKEN = os.getenv('kani_TOKEN')
 VOICEVOX_API_URL = "http://127.0.0.1:50021"  # VOICEVOXエンジンがローカルで起動している前提
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+bot.remove_command("help")
 
 @bot.event
 async def on_ready():
     print(f'ログインしました {bot.user}')
+    try:
+        synced = await bot.tree.sync()
+        print(f"{len(synced)}個のコマンドを同期しました。")
+    except Exception as e:
+        print(e)
 
 # 入退室イベントのトリガー
 @bot.event
@@ -24,19 +31,24 @@ async def on_voice_state_update(member, before, after):
     if member.id == bot.user.id:
         return
 
+    # ボイスチャンネルに接続していない場合は処理をスキップ
+    if member.guild.voice_client is None:
+        return
+
+    # ユーザーがボイスチャンネルに参加したとき
     if before.channel is None and after.channel is not None:
-        # ユーザーがチャンネルに参加したとき
         text = f"{member.display_name} がボイスチャンネルに参加しました"
         await generate_and_play_voice(member, text, after.channel)
 
+    # ユーザーがチャンネルから退出したとき
     elif before.channel is not None and after.channel is None:
-        # ユーザーがチャンネルから退出したとき
         text = f"{member.display_name} がボイスチャンネルから退出しました"
         await generate_and_play_voice(member, text, before.channel)
 
 async def generate_and_play_voice(member, text, voice_channel):
     # VOICEVOX APIにテキストを送信して音声合成
-    voice_id = 3  # ずんだもんノーマルのID
+    # voice_id = 3  # ずんだもんノーマルのID
+    voice_id = 89  # voidollのID
     audio_query_payload = {"text": text, "speaker": voice_id}
 
     # 音声クエリ生成
@@ -70,30 +82,31 @@ async def generate_and_play_voice(member, text, voice_channel):
     if len(vc.channel.members) == 1:
         await vc.disconnect()
 
-@bot.command(name="読み上げ", description="ずんだもんの声でメッセージを読み上げ")
-async def read_message(ctx):
-    if not ctx.author.voice:
-        await ctx.send("ボイスチャンネルに接続してください")
+@bot.tree.command(name="読み上げ", description="voidollの声でメッセージを読み上げ")
+async def read_message(interaction: discord.Interaction):
+    if not interaction.user.voice:
+        await interaction.response.send_message("ボイスチャンネルに接続してください", ephemeral=True)
         return
 
     # すでに接続されているか確認
-    vc = ctx.voice_client
+    vc = interaction.guild.voice_client
     if not vc:  # もしボットがまだ接続されていなければ接続する
-        vc = await ctx.author.voice.channel.connect()
+        vc = await interaction.user.voice.channel.connect()
 
     embed = discord.Embed(title="読み上げ", url="https://twitter.com/miyavi1117?s=20", color=discord.Color.purple())
     embed.add_field(name="", value="ボイスチャットの接続に成功しました", inline=False)
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
     try:
         while True:
-            message = await bot.wait_for('message', check=lambda m: m.channel == ctx.channel)
+            message = await bot.wait_for('message', check=lambda m: m.channel == interaction.channel)
             if message.author.bot:
                 continue  # ボットのメッセージを無視する
 
             # VOICEVOX APIにテキストを送信して音声合成
             text = message.content
-            voice_id = 3  # ずんだもんノーマルのID
+            # voice_id = 3  # ずんだもんノーマルのID
+            voice_id = 89  # voidollのID
             audio_query_payload = {"text": text, "speaker": voice_id}
             
             # 音声クエリ生成
@@ -125,17 +138,24 @@ async def read_message(ctx):
         if vc.is_connected():
             await vc.disconnect()
 
-@bot.command(name="切断", description="ボイスチャンネルから切断")
-async def disconnect(ctx):
-    if not ctx.voice_client:
+@bot.tree.command(name="切断", description="ボイスチャンネルから切断")
+async def disconnect(interaction: discord.Interaction):
+    if not interaction.guild.voice_client:
         embed = discord.Embed(title="ボイスチャンネルに接続していません", color=discord.Color.purple())
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
     # ボイスチャンネルから切断
-    await ctx.voice_client.disconnect()
+    await interaction.guild.voice_client.disconnect()
     embed = discord.Embed(title="切断", url="https://twitter.com/miyavi1117?s=20", color=discord.Color.purple())
     embed.add_field(name="", value="ボイスチャンネルから切断に成功しました", inline=False)
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="help", description="使用可能なコマンドの一覧を表示します")
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(title="コマンド一覧", color=discord.Color.blue())
+    embed.add_field(name="/読み上げ", value="voidollの声でメッセージを読み上げ", inline=False)
+    embed.add_field(name="/切断", value="ボイスチャンネルから切断", inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 bot.run(TOKEN)

@@ -1,4 +1,5 @@
 # Ignore .env files
 .env
+.env_ray
 just-ratio-368201-5a8966c05bcb.json
 temp_files/

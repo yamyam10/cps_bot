@@ -391,7 +391,11 @@ class HeroRoulette(commands.Cog):
             {"id": 81, "name": "シノン", "color": 0x18989b, "type": "コラボ", "role": "ガンナー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510595444776/0770644E-F05E-49A8-A8C2-59F8F929498E.jpg"},
             {"id": 82, "name": "ターニャ・デグレチャフ", "color": 0x47574f, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1248333510805028915/37139A0F-1D30-4EF4-9A02-C42240080BBF.jpg"},
             {"id": 83, "name": "鬼ヶ式 うら", "color": 0xb7a79e, "type": "オリジナル", "role": "タンク", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1289240020607045653/2EC4D3C2-CB84-44D6-AE0C-8B2C8D0924C7.jpg"},
-            {"id": 84, "name": "コラプス", "color": 0x8a57fb, "type": "オリジナル", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1289240154309136445/F7F9E844-4FCB-4E4C-8579-487DD43A6B28.jpg"}
+            {"id": 84, "name": "コラプス", "color": 0x8a57fb, "type": "オリジナル", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1289240154309136445/F7F9E844-4FCB-4E4C-8579-487DD43A6B28.jpg"},
+            {"id": 85, "name": "ボンドルド", "color": 0x61388a, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734002241556/E0A3FC6E-42A5-49F4-A846-7EF87C20492C.jpg"},
+            {"id": 86, "name": "みりぽゆ", "color": 0xff68c8, "type": "オリジナル", "role": "ガンナー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734228602981/65E81500-A051-4523-8E40-5E83B7097946.jpg"},
+            {"id": 87, "name": "ゴン=フリークス", "color": 0x49c334, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734463746241/2E660FE9-0E9B-450B-B5AA-A345364BD67E.jpg"},
+            {"id": 88, "name": "キルア=ゾルディック", "color": 0xac85bc, "type": "コラボ", "role": "スプリンター", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734719336499/E669E432-110C-49B6-A7AF-27EBBA049949.jpg"}
          ]
         self.reset_settings()
 

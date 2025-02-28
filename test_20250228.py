@@ -356,6 +356,13 @@ def save_balances(balances):
 
 balances = load_balances()
 
+def ensure_balance(user_id):
+    if str(user_id) not in balances:
+        balances[str(user_id)] = 50000
+    # elif balances[str(user_id)] <= 0:
+    #     balances[str(user_id)] += 50000
+    save_balances(balances)
+
 # 出目の役と倍率を取得
 def get_vs_result(dice):
     dice.sort()
@@ -372,7 +379,7 @@ def get_vs_result(dice):
         unique = set(dice)
         unique.remove(dice[1])
         remaining = unique.pop()
-        return (f"{remaining}の目", remaining)  # 出た目の数字分もらう
+        return (f"{remaining}の目", 1)  # 1倍
     else:
         return ("目なし", -1)  # 掛け金払う（振り直し可能）
 
@@ -495,6 +502,10 @@ class Dice_vs_Button(ui.View):
         loser = self.user2 if winner == self.user1 else self.user1
         amount_won = self.bet_amount * abs(self.dice_result[winner.id][2])
 
+        # 負けた側がヒフミ (1,2,3) だった場合、勝者の獲得額を2倍にする
+        if self.dice_result[loser.id][0] == [1, 2, 3]:
+            amount_won *= 2
+
         balances[str(winner.id)] += amount_won
         balances[str(loser.id)] -= amount_won
 
@@ -516,6 +527,8 @@ class Dice_vs_Button(ui.View):
 
 @bot.tree.command(name="チンチロ対戦", description="ユーザー同士でチンチロ対戦！")
 async def チンチロ対戦(interaction: discord.Interaction, opponent: discord.Member):
+    ensure_balance(interaction.user.id)
+    ensure_balance(opponent.id)
     if balances.get(str(interaction.user.id), 0) <= 0:
         await interaction.response.send_message("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
         return
@@ -525,6 +538,43 @@ async def チンチロ対戦(interaction: discord.Interaction, opponent: discord
     
     view = Dice_vs_Button(interaction.user, opponent)
     await interaction.response.send_message(f"{interaction.user.mention} (親) vs {opponent.mention} (子)！サイコロを振る前にかけ金を設定してください！", view=view)
+
+@bot.tree.command(name="所持金変更", description="所持金を変更します")
+async def 所持金変更(interaction: discord.Interaction, user: discord.User, amount: int):
+    admin_id = "513153492165197835"
+    if str(interaction.user.id) != admin_id:
+        await interaction.response.send_message("このコマンドは管理者のみ使用できます。", ephemeral=True)
+        return
+
+    user_id = str(user.id)
+    balances[user_id] = amount
+    save_balances(balances)
+
+    embed = discord.Embed(
+        title="所持金変更",
+        description=f"{user.mention} の所持金を {amount} 円に設定しました。",
+        color=discord.Color.purple()
+    )
+    embed.add_field(name="現在の所持金", value=f"{balances[user_id]} 円", inline=False)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="balance_list", description="全ユーザーの所持金を表示")
+async def balance_list(interaction: discord.Interaction):
+    if not balances:
+        await interaction.response.send_message("現在、所持金のデータがありません。", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="全ユーザーの所持金リスト",
+        color=discord.Color.purple()
+    )
+
+    for user_id, amount in balances.items():
+        user = await bot.fetch_user(int(user_id))
+        embed.add_field(name=user.name, value=f"{amount} 円", inline=False)
+
+    await interaction.response.send_message(embed=embed)
 
 @bot.command()
 async def test(ctx):

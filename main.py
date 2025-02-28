@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
+from discord import ui
 
 load_dotenv()
 
@@ -288,6 +289,61 @@ async def ダイス(interaction: discord.Interaction):
     sides = 6  # デフォルトのサイコロの面数を設定
     result = random.randint(1, sides)
     await interaction.response.send_message(f'{sides}面のサイコロを振りました。結果は: {result}です。')
+
+class DiceButton(ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.dice_result = None
+
+    @ui.button(label="サイコロを振る", style=discord.ButtonStyle.primary)
+    async def roll_dice(self, interaction: discord.Interaction, button: ui.Button):
+        dice = [random.randint(1, 6) for _ in range(3)]
+        dice.sort()
+        result_message, score = get_result(dice)
+        
+        self.dice_result = (dice, result_message, score)
+
+        dice_file_name = f'dice_all/dice_{"".join(map(str, dice))}.jpg'
+
+        # Embed作成
+        embed = discord.Embed(
+            title=f'{interaction.user.display_name} のサイコロの結果',
+            description=f'{result_message}',
+            color=discord.Color.purple()
+        )
+
+        # 画像を埋め込み
+        embed.set_image(url=f'attachment://{os.path.basename(dice_file_name)}')
+
+        # 画像ファイルを添付してメッセージ送信
+        file = discord.File(dice_file_name, filename=os.path.basename(dice_file_name))
+        await interaction.response.send_message(
+            embed=embed,
+            file=file
+        )
+
+def get_result(dice):
+    if dice[0] == dice[1] == dice[2]:
+        if dice[0] == 1:
+            return ("ピンゾロ", 100)
+        else:
+            return ("アラシ", 50)
+    elif dice == [1, 2, 3]:
+        return ("ヒフミ", -10)
+    elif dice == [4, 5, 6]:
+        return ("シゴロ", 50)
+    elif dice[0] == dice[1] or dice[1] == dice[2]:
+        unique = set(dice)
+        unique.remove(dice[1])
+        remaining = unique.pop()
+        return (f"{remaining}の目", remaining)
+    else:
+        return ("目なし", 0)
+
+@bot.tree.command(name="チンチロ", description="チンチロができます")
+async def チンチロ(interaction: discord.Interaction):
+    view = DiceButton()
+    await interaction.response.send_message("サイコロを振りたい場合はボタンを押してね！", view=view)
 
 @bot.command()
 async def test(ctx):

@@ -519,12 +519,13 @@ class Dice_vs_Button(ui.View):
 
         winner = self.user1 if user1_strength > user2_strength else self.user2
         loser = self.user2 if winner == self.user1 else self.user1
+        dice_result_winner = list(self.dice_result[winner.id])
         amount_won = self.bet_amount * abs(self.dice_result[winner.id][2])
 
         # 負けた側がヒフミ (1,2,3) だった場合、勝者の獲得額を2倍にする
         if self.dice_result[loser.id][0] == [1, 2, 3]:
             amount_won *= 2
-            self.dice_result[winner.id][2] *= 2
+            dice_result_winner[2] *= 2
 
         balances[str(winner.id)] += amount_won
         balances[str(loser.id)] -= amount_won
@@ -534,7 +535,7 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner.mention} 勝利！\n"
-                        f"掛け金{self.bet_amount}円の{self.dice_result[winner.id][2]}倍で{amount_won}円獲得\n"
+                        f"掛け金{self.bet_amount}円の{dice_result_winner[2]}倍で{amount_won}円獲得\n"
                         f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}円\n"
                         f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}円",
             color=discord.Color.gold()
@@ -567,7 +568,7 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
         return
 
     user_id = str(user.id)
-    balances[user_id] = amount
+    balances[user_id] += amount
     save_balances(balances)
 
     embed = discord.Embed(

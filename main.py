@@ -365,7 +365,7 @@ async def チンチロ(interaction: discord.Interaction):
 # 通貨
 CURRENCY = "BM"
 
-# Firebase Firestoreの初期化
+# Firebase Firestoreの初期設定
 cred = credentials.Certificate(firebase_data)
 firebase_admin.initialize_app(cred)
 db = firestore.client()

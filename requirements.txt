@@ -11,3 +11,4 @@ gspread
 oauth2client
 yt-dlp
 PyNaCl
+firebase-admin

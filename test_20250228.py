@@ -1,9 +1,10 @@
-import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json
+import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json, firebase_admin
 from discord.ext import commands, tasks
 from discord import app_commands
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 from discord import ui
+from firebase_admin import credentials, firestore
 
 load_dotenv()
 
@@ -31,6 +32,21 @@ creds_data = {
     "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv('GOOGLE_CLIENT_EMAIL')}"
 }
 
+firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n")
+firebase_data = {
+    "type": "service_account",
+    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+    "private_key": firebase_private_key,
+    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40discordbot-cps.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
+
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_data, scope)
 gspread_client = gspread.authorize(creds)  # gspread用のクライアント
@@ -38,6 +54,7 @@ gspread_client = gspread.authorize(creds)  # gspread用のクライアント
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')
 CHANNEL_ID = int(os.getenv('channel_id_kani'))
+FIREBASE_CREDENTIALS_JSON = os.getenv('firebase')
 
 last_row = 0
 
@@ -344,23 +361,31 @@ async def チンチロ(interaction: discord.Interaction):
 
 CURRENCY = "BM"
 
-# データを読み込む関数
-def load_balances():
-    if os.path.exists(BALANCE_FILE):
-        with open(BALANCE_FILE, "r") as f:
-            return json.load(f)
-    return {}
+# Firebase Firestoreの初期化
+cred = credentials.Certificate(firebase_data)
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-# データを保存する関数
+# Firestoreからユーザーの所持金をロード
+def load_balances():
+    """Firestoreからユーザーの所持金データを取得"""
+    balances = {}
+    docs = db.collection("balances").stream()
+    for doc in docs:
+        balances[doc.id] = doc.to_dict().get("balance", 0)
+    return balances
+
 def save_balances(balances):
-    with open(BALANCE_FILE, "w") as f:
-        json.dump(balances, f, indent=4)
+    for user_id, balance in balances.items():
+        db.collection("balances").document(user_id).set({"balance": balance})
 
 balances = load_balances()
 
 def ensure_balance(user_id):
-    if str(user_id) not in balances:
-        balances[str(user_id)] = 50000
+    """ユーザーの初期所持金を確保"""
+    user_id = str(user_id)
+    if user_id not in balances:
+        balances[user_id] = 50000
     # elif balances[str(user_id)] <= 0:
     #     balances[str(user_id)] += 50000
     save_balances(balances)
@@ -368,27 +393,27 @@ def ensure_balance(user_id):
 # 出目の役と倍率を取得
 def get_vs_result(dice):
     dice.sort()
-    if dice[0] == dice[1] == dice[2]:  # ぞろ目
+    if dice[0] == dice[1] == dice[2]:
         if dice[0] == 1:
-            return ("ピンゾロ", 5)  # 5倍
+            return ("ピンゾロ", 5)
         else:
-            return (f"アラシ", 3)  # 3倍
+            return (f"アラシ", 3)
     elif dice == [4, 5, 6]:
-        return ("シゴロ", 2)  # 2倍
+        return ("シゴロ", 2)
     elif dice == [1, 2, 3]:
-        return ("ヒフミ", -2)  # 2倍払う
-    elif dice[0] == dice[1] or dice[1] == dice[2]:  # 2つ同じ目
+        return ("ヒフミ", -2)
+    elif dice[0] == dice[1] or dice[1] == dice[2]:
         unique = set(dice)
         unique.remove(dice[1])
         remaining = unique.pop()
-        return (f"{remaining}の目", 1)  # 1倍
+        return (f"{remaining}の目", 1)
     else:
-        return ("目なし", -1)  # 掛け金払う（振り直し可能）
+        return ("目なし", -1)
 
 # 出目の強さを決定
 def get_strength(dice):
     dice.sort()
-    if dice[0] == dice[1] == dice[2]:  # ぞろ目
+    if dice[0] == dice[1] == dice[2]:
         return 100 if dice[0] == 1 else 90
     elif dice == [4, 5, 6]:
         return 80
@@ -398,9 +423,9 @@ def get_strength(dice):
         unique = set(dice)
         unique.remove(dice[1])
         remaining = unique.pop()
-        return 40 - (6 - remaining) * 5  # 6の目が最強、1の目が最弱
+        return 40 - (6 - remaining) * 5
     else:
-        return 0  # 目なし
+        return 0
 
 class Dice_vs_Button(ui.View):
     def __init__(self, user1, user2):

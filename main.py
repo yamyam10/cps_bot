@@ -347,6 +347,8 @@ async def チンチロ(interaction: discord.Interaction):
 
 # ユーザーの所持金データファイル
 BALANCE_FILE = "balances.json"
+# 通貨
+CURRENCY = "BM"
 
 # データを読み込む関数
 def load_balances():
@@ -445,7 +447,7 @@ class Dice_vs_Button(ui.View):
                 return
             
             self.bet_amount = bet_amount
-            await interaction.followup.send(f"かけ金を {self.bet_amount} 円に設定しました！")
+            await interaction.followup.send(f"かけ金を {self.bet_amount} {CURRENCY}に設定しました！")
         except ValueError:
             await interaction.followup.send("無効な金額です。数値を入力してください。", ephemeral=True)
 
@@ -508,8 +510,8 @@ class Dice_vs_Button(ui.View):
             result_embed = discord.Embed(
                 title="対戦結果",
                 description=f"引き分け！\n"
-                            f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}円\n"
-                            f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}円",
+                            f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}{CURRENCY}\n"
+                            f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}{CURRENCY}",
                 color=discord.Color.gold()
             )
             await interaction.followup.send(embed=result_embed)
@@ -535,9 +537,9 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner.mention} 勝利！\n"
-                        f"掛け金{self.bet_amount}円の{dice_result_winner[2]}倍で{amount_won}円獲得\n"
-                        f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}円\n"
-                        f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}円",
+                        f"掛け金{self.bet_amount}{CURRENCY}の{dice_result_winner[2]}倍で{amount_won}{CURRENCY}獲得\n"
+                        f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}{CURRENCY}\n"
+                        f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}{CURRENCY}",
             color=discord.Color.gold()
         )
 
@@ -573,10 +575,10 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
     embed = discord.Embed(
         title="所持金変更",
-        description=f"{user.mention} の所持金を {amount} 円に設定しました。",
+        description=f"{user.mention} の所持金を {amount} {CURRENCY}に設定しました。",
         color=discord.Color.purple()
     )
-    embed.add_field(name="現在の所持金", value=f"{balances[user_id]} 円", inline=False)
+    embed.add_field(name="現在の所持金", value=f"{balances[user_id]} {CURRENCY}", inline=False)
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -593,7 +595,7 @@ async def 所持金リスト(interaction: discord.Interaction):
 
     for user_id, amount in balances.items():
         user = await bot.fetch_user(int(user_id))
-        embed.add_field(name=user.name, value=f"{amount} 円", inline=False)
+        embed.add_field(name=user.name, value=f"{amount} {CURRENCY}", inline=False)
 
     await interaction.response.send_message(embed=embed)
 

@@ -616,8 +616,15 @@ async def 所持金リスト(interaction: discord.Interaction):
     )
 
     for user_id, amount in balances.items():
-        user = await bot.fetch_user(int(user_id))
-        embed.add_field(name=user.name, value=f"{amount} {CURRENCY}", inline=False)
+        try:
+            user = await bot.fetch_user(int(user_id))
+            user_display = user.mention
+        except discord.NotFound:
+            user_display = f"`{user_id}`"
+        except discord.HTTPException:
+            user_display = f"`{user_id}`"
+
+        embed.add_field(name=user_display, value=f"{amount} {CURRENCY}", inline=False)
 
     await interaction.response.send_message(embed=embed)
 

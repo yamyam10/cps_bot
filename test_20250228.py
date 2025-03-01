@@ -606,8 +606,8 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="balance_list", description="全ユーザーの所持金を表示")
-async def balance_list(interaction: discord.Interaction):
+@bot.tree.command(name="所持金リスト", description="全ユーザーの所持金を表示")
+async def 所持金リスト(interaction: discord.Interaction):
     if not balances:
         await interaction.response.send_message("現在、所持金のデータがありません。", ephemeral=True)
         return
@@ -618,8 +618,15 @@ async def balance_list(interaction: discord.Interaction):
     )
 
     for user_id, amount in balances.items():
-        user = await bot.fetch_user(int(user_id))
-        embed.add_field(name=user.name, value=f"{amount} {CURRENCY}", inline=False)
+        try:
+            user = await bot.fetch_user(int(user_id))  # ユーザー情報を取得
+            user_display = user.mention  # メンションを作成
+        except discord.NotFound:
+            user_display = f"`{user_id}`"  # ユーザーがいない場合はIDを表示
+        except discord.HTTPException:
+            user_display = f"`{user_id}`"  # 通信エラー時もIDを表示
+
+        embed.add_field(name=user_display, value=f"{amount} {CURRENCY}", inline=False)
 
     await interaction.response.send_message(embed=embed)
 

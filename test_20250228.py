@@ -428,17 +428,61 @@ def get_strength(dice):
         return 0
 
 class Dice_vs_Button(ui.View):
-    def __init__(self, user1, user2):
+    def __init__(self, user1, user2, bot):
         super().__init__(timeout=None)
         self.user1 = user1
         self.user2 = user2
+        self.bot = bot
         self.dice_result = {}
         self.bet_amount = 0
         self.game_over = False
         self.roll_attempts = {user1.id: 0, user2.id: 0}
 
+    async def roll_dice_bot(self, interaction):
+        """Botが自動でサイコロを振る（目なしなら2回振り直せる）"""
+        max_attempts = 3  # 最大3回まで振れる
+        attempts = 0
+
+        while attempts < max_attempts:
+            dice = [random.randint(1, 6) for _ in range(3)]
+            result_message, multiplier = get_vs_result(dice)
+            strength = get_strength(dice)
+
+            self.dice_result[self.bot.user.id] = (dice, result_message, multiplier, strength)
+
+            # 目なしなら振り直し
+            if result_message == "目なし":
+                attempts += 1
+                if attempts < max_attempts:
+                    continue  # もう一度振る
+            break  # 目なしでない or 3回振り終えたら終了
+
+        # **親の役が確定するまでBotの結果を表示しない**
+        if self.user1.id not in self.dice_result:
+            return
+
+        if self.roll_attempts[self.user1.id] >= 3 or self.dice_result[self.user1.id][2] != -1:
+            await self.show_bot_dice_result(interaction)
+
+            if len(self.dice_result) == 2:
+                await self.determine_winner(interaction)
+
+    async def show_bot_dice_result(self, interaction):
+        dice, result_message, _, _ = self.dice_result[self.bot.user.id]
+
+        dice_file_name = f'dice_all/dice_{"".join(map(str, dice))}.jpg'
+        embed = discord.Embed(
+            title=f'{self.bot.user.mention} (子) のサイコロの結果',
+            description=f'{result_message}',
+            color=discord.Color.purple()
+        )
+        embed.set_image(url=f'attachment://{os.path.basename(dice_file_name)}')
+        file = discord.File(dice_file_name, filename=os.path.basename(dice_file_name))
+
+        await interaction.followup.send(embed=embed, file=file)
+
     def disable_buttons(self):
-        """対戦結果表示後、ボタンを無効化する"""
+        """ボタンを無効化し、対戦終了"""
         for child in self.children:
             child.disabled = True
         self.stop()
@@ -482,7 +526,14 @@ class Dice_vs_Button(ui.View):
         if interaction.user.id != self.user2.id:
             await interaction.response.send_message("このボタンは子のみが押せます。", ephemeral=True)
             return
-        await self.roll_dice(interaction, self.user2.id, self.user2.mention, "子")
+        
+        if self.user2.id == self.bot.user.id:
+            await self.roll_dice_bot()
+        else:
+            await self.roll_dice(interaction, self.user2.id, self.user2.mention, "子")
+
+        if len(self.dice_result) == 2:
+            await self.determine_winner(interaction)
 
     async def roll_dice(self, interaction, user_id, user_mention, role):
         if self.bet_amount == 0:
@@ -534,10 +585,11 @@ class Dice_vs_Button(ui.View):
             result_embed = discord.Embed(
                 title="対戦結果",
                 description=f"引き分け！\n"
-                            f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}{CURRENCY}\n"
-                            f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}{CURRENCY}",
+                            f"{self.user1.mention} の所持金: {balances.get(str(self.user1.id), 0)}{CURRENCY}\n"
+                            f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
                 color=discord.Color.gold()
             )
+            await self.show_bot_dice_result(interaction)
             await interaction.followup.send(embed=result_embed)
             self.disable_buttons()
             self.game_over = True
@@ -545,46 +597,67 @@ class Dice_vs_Button(ui.View):
 
         winner = self.user1 if user1_strength > user2_strength else self.user2
         loser = self.user2 if winner == self.user1 else self.user1
+
+        # 勝者・敗者の所持金を確保
+        ensure_balance(winner.id)
+        ensure_balance(loser.id)
+
         dice_result_winner = list(self.dice_result[winner.id])
         amount_won = self.bet_amount * abs(self.dice_result[winner.id][2])
 
-        # 負けた側がヒフミ (1,2,3) だった場合、勝者の獲得額を2倍にする
+        # 負けた側がヒフミ (1,2,3) だった場合、勝者の獲得額を2倍
         if self.dice_result[loser.id][0] == [1, 2, 3]:
             amount_won *= 2
             dice_result_winner[2] *= 2
 
-        balances[str(winner.id)] += amount_won
-        balances[str(loser.id)] -= amount_won
+        # Botが関わる場合は balances を変更しない
+        if winner.id != self.bot.user.id:
+            balances[str(winner.id)] += amount_won
+        if loser.id != self.bot.user.id:
+            balances[str(loser.id)] -= amount_won
 
-        save_balances(balances)
+        # Bot以外のプレイヤーの所持金を保存
+        if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
+            save_balances(balances)
 
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner.mention} 勝利！\n"
-                        f"掛け金{self.bet_amount}{CURRENCY}の{dice_result_winner[2]}倍で{amount_won}{CURRENCY}獲得\n"
-                        f"{self.user1.mention} の所持金: {balances[str(self.user1.id)]}{CURRENCY}\n"
-                        f"{self.user2.mention} の所持金: {balances[str(self.user2.id)]}{CURRENCY}",
+                        f"掛け金 {self.bet_amount}{CURRENCY} の {dice_result_winner[2]} 倍で {amount_won}{CURRENCY} 獲得\n"
+                        f"{self.user1.mention} の所持金: {balances.get(str(self.user1.id), 0)}{CURRENCY}\n"
+                        f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
             color=discord.Color.gold()
         )
-
+        await self.show_bot_dice_result(interaction)
         await interaction.followup.send(embed=result_embed)
-        
+
         self.disable_buttons()
         self.game_over = True
 
-@bot.tree.command(name="チンチロ対戦", description="ユーザー同士でチンチロ対戦！")
+@bot.tree.command(name="チンチロ対戦", description="ユーザー同士またはBotとチンチロ対戦！")
 async def チンチロ対戦(interaction: discord.Interaction, opponent: discord.Member):
     ensure_balance(interaction.user.id)
-    ensure_balance(opponent.id)
+    if opponent.id != bot.user.id:
+        ensure_balance(opponent.id)
+
     if balances.get(str(interaction.user.id), 0) <= 0:
-        await interaction.response.send_message("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
+        await interaction.response.defer()  # 応答を遅延させる
+        await interaction.followup.send("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
         return
-    if balances.get(str(opponent.id), 0) <= 0:
-        await interaction.response.send_message(f"{opponent.mention} の所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
+
+    if opponent.id != bot.user.id and balances.get(str(opponent.id), 0) <= 0:
+        await interaction.response.defer()
+        await interaction.followup.send(f"{opponent.mention} の所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
         return
+
+    view = Dice_vs_Button(interaction.user, opponent, bot)
     
-    view = Dice_vs_Button(interaction.user, opponent)
-    await interaction.response.send_message(f"{interaction.user.mention} (親) vs {opponent.mention} (子)！サイコロを振る前にかけ金を設定してください！", view=view)
+    await interaction.response.defer()  # ここで応答を遅延させる
+    await interaction.followup.send(f"{interaction.user.mention} vs {opponent.mention}！", view=view)
+
+    # Botが対戦相手の場合、自動でサイコロを振る
+    if opponent.id == bot.user.id:
+        await view.roll_dice_bot(interaction)
 
 @bot.tree.command(name="所持金変更", description="所持金を変更します")
 async def 所持金変更(interaction: discord.Interaction, user: discord.User, amount: int):

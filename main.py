@@ -474,6 +474,9 @@ class Dice_vs_Button(ui.View):
                 await self.determine_winner(interaction)
 
     async def show_bot_dice_result(self, interaction):
+        if not self.user2.bot:
+            return
+
         dice, result_message, _, _ = self.dice_result[self.bot.user.id]
 
         dice_file_name = f'dice_all/dice_{"".join(map(str, dice))}.jpg'

@@ -63,7 +63,7 @@ async def on_ready():
     print(f'ログインしました {bot.user}')
 
     # メッセージを送信するチャンネルを取得
-    target_channel_id = int(os.getenv('channel_id'))
+    target_channel_id = int(os.getenv('channel_id_kani'))
     target_channel = bot.get_channel(target_channel_id)
 
     # メッセージを送信
@@ -359,6 +359,7 @@ async def チンチロ(interaction: discord.Interaction):
     view = DiceButton(interaction.user.id)
     await interaction.response.send_message("サイコロを振りたい場合はボタンを押してね！", view=view)
 
+# 通貨
 CURRENCY = "BM"
 
 # Firebase Firestoreの初期化
@@ -439,7 +440,9 @@ class Dice_vs_Button(ui.View):
         self.roll_attempts = {user1.id: 0, user2.id: 0}
 
     async def roll_dice_bot(self, interaction):
-        """Botが自動でサイコロを振る（目なしなら2回振り直せる）"""
+        if not self.user2.bot:
+            return
+
         max_attempts = 3  # 最大3回まで振れる
         attempts = 0
 
@@ -627,13 +630,11 @@ class Dice_vs_Button(ui.View):
             amount_won *= 2
             dice_result_winner[2] *= 2
 
-        # Botが関わる場合は balances を変更しない
         if winner.id != self.bot.user.id:
             balances[str(winner.id)] += amount_won
         if loser.id != self.bot.user.id:
             balances[str(loser.id)] -= amount_won
 
-        # Bot以外のプレイヤーの所持金を保存
         if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
             save_balances(balances)
 

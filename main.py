@@ -443,7 +443,9 @@ class Dice_vs_Button(ui.View):
         self.roll_attempts = {user1.id: 0, user2.id: 0}
 
     async def roll_dice_bot(self, interaction):
-        """Botが自動でサイコロを振る（目なしなら2回振り直せる）"""
+        if not self.user2.bot:
+            return
+
         max_attempts = 3  # 最大3回まで振れる
         attempts = 0
 

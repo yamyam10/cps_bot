@@ -609,7 +609,8 @@ class Dice_vs_Button(ui.View):
 
         self.dice_result[user_id] = (dice, result_message, multiplier, strength)
 
-        if len(self.dice_result) == 2:
+        if len(self.dice_result) == 2 and not self.game_over:
+            self.game_over = True
             await self.determine_winner(interaction)
 
     async def determine_winner(self, interaction):

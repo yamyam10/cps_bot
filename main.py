@@ -712,6 +712,8 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
 @bot.tree.command(name="所持金リスト", description="全ユーザーの所持金を表示")
 async def 所持金リスト(interaction: discord.Interaction):
+    balances, debts = load_balances()
+
     if not balances:
         await interaction.response.send_message("現在、所持金のデータがありません。", ephemeral=True)
         return
@@ -721,16 +723,35 @@ async def 所持金リスト(interaction: discord.Interaction):
         color=discord.Color.purple()
     )
 
-    for user_id, amount in balances.items():
-        try:
-            user = await bot.fetch_user(int(user_id))  # ユーザー情報を取得
-            user_display = user.mention  # メンションを作成
-        except discord.NotFound:
-            user_display = f"`{user_id}`"  # ユーザーがいない場合はIDを表示
-        except discord.HTTPException:
-            user_display = f"`{user_id}`"  # 通信エラー時もIDを表示
+    user_count = 0
 
-        embed.add_field(name=user_display, value=f"{amount} {CURRENCY}", inline=False)
+    for user_id, amount in balances.items():
+
+        if str(user_id) == str(bot.user.id):
+            continue
+        
+        try:
+            user = await bot.fetch_user(int(user_id))
+            if user.bot:
+                continue
+            user_display = user.mention
+        except discord.NotFound:
+            user_display = f"`{user_id}`"
+        except discord.HTTPException:
+            user_display = f"`{user_id}`"
+        
+        debt_amount = debts.get(user_id, 0)
+        if debt_amount > 0:
+            balance_text = f"{amount} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
+        else:
+            balance_text = f"{amount} {CURRENCY}"
+
+        embed.add_field(name=user_display, value=balance_text, inline=False)
+        user_count += 1
+
+    if user_count == 0:
+        await interaction.response.send_message("所持金を表示できるユーザーがいません。", ephemeral=True)
+        return
 
     await interaction.response.send_message(embed=embed)
 

@@ -698,7 +698,7 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
     user_id = str(user.id)
     balances[user_id] += amount
-    save_balances(balances)
+    save_balances(balances, debts)
 
     embed = discord.Embed(
         title="所持金変更",

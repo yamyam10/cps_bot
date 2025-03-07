@@ -668,7 +668,7 @@ class Dice_vs_Button(ui.View):
 @bot.tree.command(name="チンチロ対戦", description="ユーザー同士またはBotとチンチロ対戦！")
 async def チンチロ対戦(interaction: discord.Interaction, opponent: discord.Member):
     ensure_balance(interaction.user.id)
-    balances = load_balances()
+    balances, debts = load_balances()
     if opponent.id != bot.user.id:
         ensure_balance(opponent.id)
 

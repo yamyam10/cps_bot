@@ -648,7 +648,7 @@ class Dice_vs_Button(ui.View):
             balances[str(loser.id)] -= amount_won
 
         if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
-            save_balances(balances)
+            save_balances(balances, debts)
 
         result_embed = discord.Embed(
             title="対戦結果",

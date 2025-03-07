@@ -372,27 +372,36 @@ db = firestore.client()
 
 # Firestoreからユーザーの所持金をロード
 def load_balances():
-    """Firestoreからユーザーの所持金データを取得"""
+    """Firestoreからユーザーの所持金データと借金データを取得"""
     balances = {}
+    debts = {}  # 借金データ
+
     docs = db.collection("balances").stream()
     for doc in docs:
-        balances[doc.id] = doc.to_dict().get("balance", 0)
-    return balances
+        data = doc.to_dict()
+        balances[doc.id] = data.get("balance", 0)
+        debts[doc.id] = data.get("debt", 0)  # デフォルトで0（借金なし）
 
-def save_balances(balances):
+    return balances, debts  # 所持金と借金を両方返す
+
+def save_balances(balances, debts):
+    """Firestoreにユーザーの所持金データと借金データを保存"""
     for user_id, balance in balances.items():
-        db.collection("balances").document(user_id).set({"balance": balance})
+        debt = debts.get(user_id, 0)  # デフォルトで0
+        db.collection("balances").document(user_id).set({"balance": balance, "debt": debt})
 
-balances = load_balances()
+balances, debts = load_balances()
 
 def ensure_balance(user_id):
     """ユーザーの初期所持金を確保"""
     user_id = str(user_id)
+
+    balances, debts = load_balances()
+
     if user_id not in balances:
-        balances[user_id] = 50000
-    # elif balances[str(user_id)] <= 0:
-    #     balances[str(user_id)] += 50000
-    save_balances(balances)
+        balances[user_id] = 50000  # 初期所持金
+        debts[user_id] = 0  # 初期借金なし
+        save_balances(balances, debts)  # Firestore に保存
 
 # 出目の役と倍率を取得
 def get_vs_result(dice):
@@ -474,9 +483,6 @@ class Dice_vs_Button(ui.View):
                 await self.determine_winner(interaction)
 
     async def show_bot_dice_result(self, interaction):
-        if not self.user2.bot:
-            return
-
         dice, result_message, _, _ = self.dice_result[self.bot.user.id]
 
         dice_file_name = f'dice_all/dice_{"".join(map(str, dice))}.jpg'
@@ -716,16 +722,91 @@ async def 所持金リスト(interaction: discord.Interaction):
 
     for user_id, amount in balances.items():
         try:
-            user = await bot.fetch_user(int(user_id))
-            user_display = user.mention
+            user = await bot.fetch_user(int(user_id))  # ユーザー情報を取得
+            user_display = user.mention  # メンションを作成
         except discord.NotFound:
-            user_display = f"`{user_id}`"
+            user_display = f"`{user_id}`"  # ユーザーがいない場合はIDを表示
         except discord.HTTPException:
-            user_display = f"`{user_id}`"
+            user_display = f"`{user_id}`"  # 通信エラー時もIDを表示
 
         embed.add_field(name=user_display, value=f"{amount} {CURRENCY}", inline=False)
 
     await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="借金", description="最大5万ずつ借金可能")
+async def 借金(interaction: discord.Interaction, amount: int):
+    await interaction.response.defer(ephemeral=True)  
+
+    user_id = str(interaction.user.id)
+
+    if amount <= 0:
+        await interaction.followup.send("借金額は正の数を入力してください。", ephemeral=True)
+        return
+
+    ensure_balance(user_id)  # ユーザーの初期データ確保
+
+    max_allowed_loan = 50000  # 1回の最大借金額
+    if amount > max_allowed_loan:
+        await interaction.followup.send(f"1回の借金は最大 {max_allowed_loan} {CURRENCY} までです。", ephemeral=True)
+        return
+
+    # Firestore からデータ取得
+    balances, debts = load_balances()
+
+    # 借金を増やし、所持金を追加
+    debts[user_id] = debts.get(user_id, 0) + amount
+    balances[user_id] += amount  # 借金した分、所持金を増やす
+
+    # Firestore に保存
+    save_balances(balances, debts)
+
+    embed = discord.Embed(
+        title="借金完了",
+        description=f"{interaction.user.mention} は {amount} {CURRENCY} 借りました。\n現在の所持金: {balances[user_id]} {CURRENCY}\n現在の借金: {debts[user_id]} {CURRENCY}",
+        color=discord.Color.red()
+    )
+
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="借金返済", description="借金を返済できます")
+async def 借金返済(interaction: discord.Interaction, amount: int):
+    await interaction.response.defer(ephemeral=True)  
+
+    user_id = str(interaction.user.id)
+
+    if amount <= 0:
+        await interaction.followup.send("返済額は正の数を入力してください。", ephemeral=True)
+        return
+
+    # Firestore からデータ取得
+    balances, debts = load_balances()
+
+    current_debt = debts.get(user_id, 0)  # 借金額を取得
+    if current_debt == 0:
+        await interaction.followup.send("借金はありません！", ephemeral=True)
+        return
+
+    # 返済額が借金を超えないようにする
+    repayment_amount = min(amount, current_debt, balances[user_id])
+
+    if repayment_amount <= 0:
+        await interaction.followup.send("所持金が足りないため、借金を返済できません。", ephemeral=True)
+        return
+
+    # 返済処理
+    debts[user_id] -= repayment_amount
+    balances[user_id] -= repayment_amount  # 所持金から減らす
+
+    # Firestore に保存
+    save_balances(balances, debts)
+
+    embed = discord.Embed(
+        title="借金返済",
+        description=f"{interaction.user.mention} は {repayment_amount} {CURRENCY} 返済しました。\n現在の所持金: {balances[user_id]} {CURRENCY}\n残りの借金: {debts[user_id]} {CURRENCY}",
+        color=discord.Color.green()
+    )
+
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 @bot.command()
 async def test(ctx):

@@ -507,11 +507,13 @@ class Dice_vs_Button(ui.View):
 
     @ui.button(label="かけ金を設定 (親)", style=discord.ButtonStyle.success)
     async def set_bet(self, interaction: discord.Interaction, button: ui.Button):
+        total_funds = balances.get(str(interaction.user.id), 0) - debts.get(str(interaction.user.id), 0)
+
         if interaction.user.id != self.user1.id:
             await interaction.response.send_message("親ユーザーのみかけ金を設定できます。", ephemeral=True)
             return
 
-        if balances.get(str(self.user1.id), 0) <= 0:
+        if total_funds <= 0:
             await interaction.response.send_message("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
             return
 
@@ -534,7 +536,7 @@ class Dice_vs_Button(ui.View):
             bet_msg = await bot.wait_for("message", check=check, timeout=30)  # 30秒以内の入力を要求
             bet_amount = int(bet_msg.content)
 
-            if bet_amount <= 0 or bet_amount > balances.get(str(self.user1.id), 0):
+            if bet_amount <= 0 or bet_amount > total_funds:
                 await interaction.followup.send("無効な掛け金です。所持金の範囲内で入力してください。", ephemeral=True)
                 self.betting_in_progress = False  # 入力失敗時にフラグをリセット
                 return
@@ -670,15 +672,17 @@ class Dice_vs_Button(ui.View):
 @bot.tree.command(name="チンチロ対戦", description="ユーザー同士またはBotとチンチロ対戦！")
 async def チンチロ対戦(interaction: discord.Interaction, opponent: discord.Member):
     ensure_balance(interaction.user.id)
+    v
+
     if opponent.id != bot.user.id:
         ensure_balance(opponent.id)
 
-    if balances.get(str(interaction.user.id), 0) <= 0:
+    if total_funds <= 0:
         await interaction.response.defer()  # 応答を遅延させる
         await interaction.followup.send("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
         return
 
-    if opponent.id != bot.user.id and balances.get(str(opponent.id), 0) <= 0:
+    if opponent.id != bot.user.id and total_funds <= 0:
         await interaction.response.defer()
         await interaction.followup.send(f"{opponent.mention} の所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
         return

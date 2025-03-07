@@ -372,7 +372,6 @@ db = firestore.client()
 
 # Firestoreからユーザーの所持金をロード
 def load_balances():
-    """Firestoreからユーザーの所持金データと借金データを取得"""
     balances = {}
     debts = {}  # 借金データ
 
@@ -511,6 +510,7 @@ class Dice_vs_Button(ui.View):
             await interaction.response.send_message("親ユーザーのみかけ金を設定できます。", ephemeral=True)
             return
 
+        balances, debts = load_balances()
         if balances.get(str(self.user1.id), 0) <= 0:
             await interaction.response.send_message("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
             return

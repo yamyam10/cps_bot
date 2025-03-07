@@ -567,9 +567,6 @@ class Dice_vs_Button(ui.View):
         else:
             await self.roll_dice(interaction, self.user2.id, self.user2.mention, "子")
 
-        if len(self.dice_result) == 2:
-            await self.determine_winner(interaction)
-
     async def roll_dice(self, interaction, user_id, user_mention, role):
         if self.bet_amount == 0:
             await interaction.response.send_message("かけ金が設定されていません。親がかけ金を設定してください。", ephemeral=True)

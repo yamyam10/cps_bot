@@ -611,6 +611,7 @@ class Dice_vs_Button(ui.View):
             await self.determine_winner(interaction)
 
     async def determine_winner(self, interaction):
+        balances, debts = load_balances()
         user1_strength = self.dice_result[self.user1.id][3]
         user2_strength = self.dice_result[self.user2.id][3]
 

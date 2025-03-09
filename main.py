@@ -671,7 +671,7 @@ class Dice_vs_Button(ui.View):
 @bot.tree.command(name="チンチロ対戦", description="ユーザー同士またはBotとチンチロ対戦！")
 async def チンチロ対戦(interaction: discord.Interaction, opponent: discord.Member):
     ensure_balance(interaction.user.id)
-    balances, debts = load_balances()
+    load_balances()
     if opponent.id != bot.user.id:
         ensure_balance(opponent.id)
 
@@ -696,6 +696,7 @@ async def チンチロ対戦(interaction: discord.Interaction, opponent: discord
 
 @bot.tree.command(name="所持金変更", description="所持金を変更します")
 async def 所持金変更(interaction: discord.Interaction, user: discord.User, amount: int):
+    load_balances()
     admin_id = "513153492165197835"
     if str(interaction.user.id) != admin_id:
         await interaction.response.send_message("このコマンドは管理者のみ使用できます。", ephemeral=True)

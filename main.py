@@ -623,6 +623,7 @@ class Dice_vs_Button(ui.View):
                             f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
                 color=discord.Color.gold()
             )
+            load_balances()
             await self.show_bot_dice_result(interaction)
             await interaction.followup.send(embed=result_embed)
             self.disable_buttons()
@@ -660,6 +661,7 @@ class Dice_vs_Button(ui.View):
                         f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
             color=discord.Color.gold()
         )
+        load_balances()
         await self.show_bot_dice_result(interaction)
         await interaction.followup.send(embed=result_embed)
 

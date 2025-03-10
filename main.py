@@ -805,33 +805,33 @@ async def 所持金(interaction: discord.Interaction):
 @bot.tree.command(name="借金", description="最大5万ずつ借金可能")
 async def 借金(interaction: discord.Interaction, amount: int):
     await interaction.response.defer(ephemeral=True)  
-
+    balances, debts = load_balances()
     user_id = str(interaction.user.id)
+    admin_id = "513153492165197835"
 
     if amount <= 0:
         await interaction.followup.send("借金額は正の数を入力してください。", ephemeral=True)
         return
 
-    ensure_balance(user_id)  # ユーザーの初期データ確保
+    ensure_balance(user_id)
 
     max_allowed_loan = 50000  # 1回の最大借金額
-    if amount > max_allowed_loan:
+    if user_id != admin_id and amount > max_allowed_loan:
         await interaction.followup.send(f"1回の借金は最大 {max_allowed_loan} {CURRENCY} までです。", ephemeral=True)
         return
 
-    # Firestore からデータ取得
     balances, debts = load_balances()
 
-    # 借金を増やし、所持金を追加
     debts[user_id] = debts.get(user_id, 0) + amount
     balances[user_id] += amount  # 借金した分、所持金を増やす
 
-    # Firestore に保存
     save_balances(balances, debts)
 
     embed = discord.Embed(
         title="借金完了",
-        description=f"{interaction.user.mention} は {amount} {CURRENCY} 借りました。\n現在の所持金: {balances[user_id]} {CURRENCY}\n現在の借金: {debts[user_id]} {CURRENCY}",
+        description=f"{interaction.user.mention} は **{amount} {CURRENCY}** 借りました。\n"
+                    f"**現在の所持金:** {balances[user_id]} {CURRENCY}\n"
+                    f"**現在の借金:** {debts[user_id]} {CURRENCY}",
         color=discord.Color.red()
     )
 

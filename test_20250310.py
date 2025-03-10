@@ -1,10 +1,11 @@
-import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json, firebase_admin
+import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json, firebase_admin, cv2
 from discord.ext import commands, tasks
 from discord import app_commands
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 from discord import ui
 from firebase_admin import credentials, firestore
+import numpy as np
 
 load_dotenv()
 
@@ -369,7 +370,6 @@ db = firestore.client()
 
 # Firestoreからユーザーの所持金をロード
 def load_balances():
-    """Firestoreからユーザーの所持金データと借金データを取得"""
     balances = {}
     debts = {}  # 借金データ
 
@@ -480,6 +480,9 @@ class Dice_vs_Button(ui.View):
                 await self.determine_winner(interaction)
 
     async def show_bot_dice_result(self, interaction):
+        if not self.user2.bot:
+            return
+
         dice, result_message, _, _ = self.dice_result[self.bot.user.id]
 
         dice_file_name = f'dice_all/dice_{"".join(map(str, dice))}.jpg'
@@ -505,6 +508,7 @@ class Dice_vs_Button(ui.View):
             await interaction.response.send_message("親ユーザーのみかけ金を設定できます。", ephemeral=True)
             return
 
+        balances, debts = load_balances()
         if balances.get(str(self.user1.id), 0) <= 0:
             await interaction.response.send_message("所持金がないため、チンチロ対戦を開始できません。", ephemeral=True)
             return
@@ -561,9 +565,6 @@ class Dice_vs_Button(ui.View):
         else:
             await self.roll_dice(interaction, self.user2.id, self.user2.mention, "子")
 
-        if len(self.dice_result) == 2:
-            await self.determine_winner(interaction)
-
     async def roll_dice(self, interaction, user_id, user_mention, role):
         if self.bet_amount == 0:
             await interaction.response.send_message("かけ金が設定されていません。親がかけ金を設定してください。", ephemeral=True)
@@ -603,10 +604,12 @@ class Dice_vs_Button(ui.View):
 
         self.dice_result[user_id] = (dice, result_message, multiplier, strength)
 
-        if len(self.dice_result) == 2:
+        if len(self.dice_result) == 2 and not self.game_over:
+            self.game_over = True
             await self.determine_winner(interaction)
 
     async def determine_winner(self, interaction):
+        balances, debts = load_balances()
         user1_strength = self.dice_result[self.user1.id][3]
         user2_strength = self.dice_result[self.user2.id][3]
 
@@ -618,6 +621,7 @@ class Dice_vs_Button(ui.View):
                             f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
                 color=discord.Color.gold()
             )
+            load_balances()
             await self.show_bot_dice_result(interaction)
             await interaction.followup.send(embed=result_embed)
             self.disable_buttons()
@@ -645,7 +649,7 @@ class Dice_vs_Button(ui.View):
             balances[str(loser.id)] -= amount_won
 
         if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
-            save_balances(balances)
+            save_balances(balances, debts)
 
         result_embed = discord.Embed(
             title="対戦結果",
@@ -655,6 +659,7 @@ class Dice_vs_Button(ui.View):
                         f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
             color=discord.Color.gold()
         )
+        load_balances()
         await self.show_bot_dice_result(interaction)
         await interaction.followup.send(embed=result_embed)
 
@@ -664,6 +669,7 @@ class Dice_vs_Button(ui.View):
 @bot.tree.command(name="チンチロ対戦", description="ユーザー同士またはBotとチンチロ対戦！")
 async def チンチロ対戦(interaction: discord.Interaction, opponent: discord.Member):
     ensure_balance(interaction.user.id)
+    balances, debts = load_balances()
     if opponent.id != bot.user.id:
         ensure_balance(opponent.id)
 
@@ -688,6 +694,7 @@ async def チンチロ対戦(interaction: discord.Interaction, opponent: discord
 
 @bot.tree.command(name="所持金変更", description="所持金を変更します")
 async def 所持金変更(interaction: discord.Interaction, user: discord.User, amount: int):
+    balances, debts = load_balances()
     admin_id = "513153492165197835"
     if str(interaction.user.id) != admin_id:
         await interaction.response.send_message("このコマンドは管理者のみ使用できます。", ephemeral=True)
@@ -695,7 +702,7 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
     user_id = str(user.id)
     balances[user_id] += amount
-    save_balances(balances)
+    save_balances(balances, debts)
 
     embed = discord.Embed(
         title="所持金変更",
@@ -706,27 +713,90 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="所持金リスト", description="全ユーザーの所持金を表示")
-async def 所持金リスト(interaction: discord.Interaction):
+@bot.tree.command(name="所持金ランキング", description="全ユーザーの所持金ランキングを表示")
+async def 所持金ランキング(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    balances, debts = load_balances()
+
     if not balances:
-        await interaction.response.send_message("現在、所持金のデータがありません。", ephemeral=True)
+        await interaction.followup.send("現在、所持金のデータがありません。", ephemeral=True)
         return
 
+    user_id = str(interaction.user.id)
+
+    total_assets = {
+        uid: balances.get(uid, 0) - debts.get(uid, 0) for uid in balances
+    }
+
+    sorted_assets = sorted(total_assets.items(), key=lambda x: x[1], reverse=True)
+
     embed = discord.Embed(
-        title="全ユーザーの所持金リスト",
+        title="所持金ランキング",
         color=discord.Color.purple()
     )
 
-    for user_id, amount in balances.items():
-        try:
-            user = await bot.fetch_user(int(user_id))  # ユーザー情報を取得
-            user_display = user.mention  # メンションを作成
-        except discord.NotFound:
-            user_display = f"`{user_id}`"  # ユーザーがいない場合はIDを表示
-        except discord.HTTPException:
-            user_display = f"`{user_id}`"  # 通信エラー時もIDを表示
+    user_rank = None
+    user_balance_text = None
+    rank = 0
 
-        embed.add_field(name=user_display, value=f"{amount} {CURRENCY}", inline=False)
+    displayed_count = 0
+
+    for uid, net_worth in sorted_assets:
+        if str(uid) == str(bot.user.id):
+            continue
+
+        try:
+            user = await bot.fetch_user(int(uid))
+            if user.bot:
+                continue
+            user_display = user.mention
+        except discord.NotFound:
+            user_display = f"`{uid}`"
+        except discord.HTTPException:
+            user_display = f"`{uid}`"
+
+        balance = balances.get(uid, 0)
+        debt_amount = debts.get(uid, 0)
+
+        if debt_amount > 0:
+            balance_text = f"{balance} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
+        else:
+            balance_text = f"{balance} {CURRENCY}"
+
+        rank += 1
+
+        if displayed_count < 10:
+            embed.add_field(name=f"{rank}位 {user_display}", value=f"総資産: {net_worth} {CURRENCY}\n{balance_text}", inline=False)
+            displayed_count += 1
+        
+        if uid == user_id:
+            user_rank = rank
+            user_balance_text = f"総資産: {net_worth} {CURRENCY}\n{balance_text}"
+
+    if user_rank and user_rank > 10:
+        embed.add_field(name=f"\n--- あなたの順位 ---", value=f"#{user_rank} {interaction.user.mention}: {user_balance_text}", inline=False)
+
+    await interaction.followup.send(embed=embed)
+
+@bot.tree.command(name="所持金", description="自分の所持金を表示")
+async def 所持金(interaction: discord.Interaction):
+    balances, debts = load_balances()
+    user_id = str(interaction.user.id)
+
+    balance = balances.get(user_id, 0)
+    debt_amount = debts.get(user_id, 0)
+
+    if debt_amount > 0:
+        balance_text = f"{balance} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
+    else:
+        balance_text = f"{balance} {CURRENCY}"
+
+    embed = discord.Embed(
+        title=f"{interaction.user.mention}の所持金",
+        description=f"{balance_text}",
+        color=discord.Color.purple()
+    )
 
     await interaction.response.send_message(embed=embed)
 
@@ -804,6 +874,128 @@ async def 借金返済(interaction: discord.Interaction, amount: int):
     )
 
     await interaction.followup.send(embed=embed, ephemeral=True)
+
+# 🔥 画像を保存するディレクトリ
+IMAGE_SAVE_PATH = "./images"
+
+# 🔥 HSV の範囲を手動で設定できるように定義（より厳密な黄色の検出）
+HSV_RANGES = {
+    "orange": {
+        "lower": np.array([10, 150, 150]),
+        "upper": np.array([30, 255, 255])
+    },
+    "yellow": {
+        "lower": np.array([20, 100, 100]),
+        "upper": np.array([40, 255, 255])
+    }
+}
+
+# 🔥 画像を処理して超過エリアを判定する関数
+def process_image(image_path, save_path="processed.png"):
+    image = cv2.imread(image_path)
+    image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    # 黄色のエリアを抽出
+    mask_yellow = cv2.inRange(image_hsv, HSV_RANGES["yellow"]["lower"], HSV_RANGES["yellow"]["upper"])
+
+    # オレンジ色のエリアを抽出
+    mask_orange = cv2.inRange(image_hsv, HSV_RANGES["orange"]["lower"], HSV_RANGES["orange"]["upper"])
+
+    # 黄色とオレンジの輪郭を取得
+    contours_yellow, _ = cv2.findContours(mask_yellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # 🔥 黄色のエリアのマスク（青色で描画）
+    yellow_area = np.zeros_like(mask_yellow)
+    cv2.drawContours(yellow_area, contours_yellow, -1, (255), thickness=cv2.FILLED)
+
+    # 🔥 黄色のエリアを青色で描画
+    cv2.drawContours(image, contours_yellow, -1, (255, 0, 0), 2)
+
+    # 🔥 画像の中心座標を取得
+    height, width = mask_yellow.shape
+    center_x, center_y = width // 2, height // 2
+
+    # 🔥 十字の方向（上・下・左・右）でオレンジエリアが黄色を超えているか判定
+    exceed_count = 0
+    directions = {
+        "上": (center_x, center_y - height // 4),
+        "下": (center_x, center_y + height // 4),
+        "左": (center_x - width // 4, center_y),
+        "右": (center_x + width // 4, center_y),
+    }
+
+    for direction, (dx, dy) in directions.items():
+        if 0 <= dx < width and 0 <= dy < height:
+            if mask_orange[dy, dx] > 0 and mask_yellow[dy, dx] == 0:
+                exceed_count += 1
+                # 🔥 超過エリアを赤色でマーク
+                cv2.circle(image, (dx, dy), 10, (0, 0, 255), -1)
+
+    # 🔥 可視化画像を保存
+    cv2.imwrite(save_path, image)
+
+    return exceed_count, save_path  # 超過エリア数と保存した画像のパスを返す
+
+# 🔥 画像送信ボタンのクラス
+class MoneyRequest(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+
+    @discord.ui.button(label="画像を送る", style=discord.ButtonStyle.primary)
+    async def send_image(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("このリクエストはあなたのものではありません！", ephemeral=True)
+            return
+
+        await interaction.response.send_message("画像を送信してください！", ephemeral=True)
+
+        def check(msg):
+            return msg.author.id == self.user.id and msg.attachments
+
+        try:
+            msg = await bot.wait_for("message", check=check, timeout=60)
+            attachment = msg.attachments[0]
+
+            if not attachment.filename.lower().endswith(("png", "jpg", "jpeg")):
+                await msg.channel.send("画像ファイルのみ受け付けています。")
+                return
+
+            # 🔥 画像を保存するディレクトリを作成（存在しない場合）
+            os.makedirs(IMAGE_SAVE_PATH, exist_ok=True)
+
+            # 🔥 画像の保存パス
+            image_path = os.path.join(IMAGE_SAVE_PATH, attachment.filename)
+            await attachment.save(image_path)
+
+            # 🔥 画像解析（可視化画像も作成）
+            exceed_count, processed_image_path = process_image(image_path)
+            reward = min(exceed_count, 4) * 1000  # 最大4000BM
+
+            # 🔥 Firestoreの balances に金額を反映
+            balances, debts = load_balances()
+            user_id = str(msg.author.id)
+
+            balances.setdefault(user_id, 0)
+            balances[user_id] += reward
+            save_balances(balances, debts)
+
+            # 🔥 可視化した画像を送信
+            with open(processed_image_path, "rb") as f:
+                file = discord.File(f, filename="processed.png")
+                await msg.channel.send(
+                    content=f"画像を確認しました！\n{exceed_count} か所の超過エリアがあり、{reward} BM を支払いました！💰",
+                    file=file
+                )
+
+        except TimeoutError:
+            await interaction.followup.send("時間切れです。もう一度コマンドを実行してください。", ephemeral=True)
+
+@bot.tree.command(name="おかねほちぃねん", description="画像を送るとお金がもらえます")
+async def おかねほちぃねん(interaction: discord.Interaction):
+    view = MoneyRequest(interaction.user)
+    await interaction.response.send_message("画像を送るにはボタンをクリックしてください！", view=view, ephemeral=True)
 
 @bot.command()
 async def test(ctx):

@@ -715,48 +715,90 @@ async def 所持金変更(interaction: discord.Interaction, user: discord.User, 
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="所持金リスト", description="全ユーザーの所持金を表示")
-async def 所持金リスト(interaction: discord.Interaction):
+@bot.tree.command(name="所持金ランキング", description="全ユーザーの所持金ランキングを表示")
+async def 所持金ランキング(interaction: discord.Interaction):
+    await interaction.response.defer()
+
     balances, debts = load_balances()
 
     if not balances:
-        await interaction.response.send_message("現在、所持金のデータがありません。", ephemeral=True)
+        await interaction.followup.send("現在、所持金のデータがありません。", ephemeral=True)
         return
 
+    user_id = str(interaction.user.id)
+
+    total_assets = {
+        uid: balances.get(uid, 0) - debts.get(uid, 0) for uid in balances
+    }
+
+    sorted_assets = sorted(total_assets.items(), key=lambda x: x[1], reverse=True)
+
     embed = discord.Embed(
-        title="全ユーザーの所持金リスト",
+        title="所持金ランキング",
         color=discord.Color.purple()
     )
 
-    user_count = 0
+    user_rank = None
+    user_balance_text = None
+    rank = 0
 
-    for user_id, amount in balances.items():
+    displayed_count = 0
 
-        if str(user_id) == str(bot.user.id):
+    for uid, net_worth in sorted_assets:
+        if str(uid) == str(bot.user.id):
             continue
-        
+
         try:
-            user = await bot.fetch_user(int(user_id))
+            user = await bot.fetch_user(int(uid))
             if user.bot:
                 continue
             user_display = user.mention
         except discord.NotFound:
-            user_display = f"`{user_id}`"
+            user_display = f"`{uid}`"
         except discord.HTTPException:
-            user_display = f"`{user_id}`"
-        
-        debt_amount = debts.get(user_id, 0)
+            user_display = f"`{uid}`"
+
+        balance = balances.get(uid, 0)
+        debt_amount = debts.get(uid, 0)
+
         if debt_amount > 0:
-            balance_text = f"{amount} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
+            balance_text = f"{balance} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
         else:
-            balance_text = f"{amount} {CURRENCY}"
+            balance_text = f"{balance} {CURRENCY}"
 
-        embed.add_field(name=user_display, value=balance_text, inline=False)
-        user_count += 1
+        rank += 1
 
-    if user_count == 0:
-        await interaction.response.send_message("所持金を表示できるユーザーがいません。", ephemeral=True)
-        return
+        if displayed_count < 10:
+            embed.add_field(name=f"{rank}位 {user_display}", value=f"総資産: {net_worth} {CURRENCY}\n{balance_text}", inline=False)
+            displayed_count += 1
+        
+        if uid == user_id:
+            user_rank = rank
+            user_balance_text = f"総資産: {net_worth} {CURRENCY}\n{balance_text}"
+
+    if user_rank and user_rank > 10:
+        embed.add_field(name=f"\n--- あなたの順位 ---", value=f"#{user_rank} {interaction.user.mention}: {user_balance_text}", inline=False)
+
+    await interaction.followup.send(embed=embed)
+
+@bot.tree.command(name="所持金", description="自分の所持金を表示")
+async def 所持金(interaction: discord.Interaction):
+    balances, debts = load_balances()
+    user_id = str(interaction.user.id)
+
+    balance = balances.get(user_id, 0)
+    debt_amount = debts.get(user_id, 0)
+
+    if debt_amount > 0:
+        balance_text = f"{balance} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
+    else:
+        balance_text = f"{balance} {CURRENCY}"
+
+    embed = discord.Embed(
+        title=f"{interaction.user.mention}の所持金",
+        description=f"{balance_text}",
+        color=discord.Color.purple()
+    )
 
     await interaction.response.send_message(embed=embed)
 

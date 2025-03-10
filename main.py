@@ -802,12 +802,12 @@ async def 所持金(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="借金", description="最大5万ずつ借金可能")
+@bot.tree.command(name="借金", description="最大5万ずつ借金可能（管理者は上限なし）")
 async def 借金(interaction: discord.Interaction, amount: int):
     await interaction.response.defer(ephemeral=True)  
-    balances, debts = load_balances()
+
     user_id = str(interaction.user.id)
-    admin_id = "513153492165197835"
+    admin_ids = ["513153492165197835", "698894367225544735"]
 
     if amount <= 0:
         await interaction.followup.send("借金額は正の数を入力してください。", ephemeral=True)
@@ -815,15 +815,15 @@ async def 借金(interaction: discord.Interaction, amount: int):
 
     ensure_balance(user_id)
 
-    max_allowed_loan = 50000  # 1回の最大借金額
-    if user_id != admin_id and amount > max_allowed_loan:
+    max_allowed_loan = 50000
+    if user_id not in admin_ids and amount > max_allowed_loan:
         await interaction.followup.send(f"1回の借金は最大 {max_allowed_loan} {CURRENCY} までです。", ephemeral=True)
         return
 
     balances, debts = load_balances()
 
     debts[user_id] = debts.get(user_id, 0) + amount
-    balances[user_id] += amount  # 借金した分、所持金を増やす
+    balances[user_id] += amount
 
     save_balances(balances, debts)
 

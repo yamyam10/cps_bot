@@ -802,7 +802,7 @@ async def 所持金(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="借金", description="最大5万ずつ借金可能（管理者は上限なし）")
+@bot.tree.command(name="借金", description="最大5万ずつ借金可能")
 async def 借金(interaction: discord.Interaction, amount: int):
     await interaction.response.defer(ephemeral=True)  
 

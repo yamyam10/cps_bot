@@ -809,7 +809,7 @@ async def 所持金(interaction: discord.Interaction):
 
 @bot.tree.command(name="借金", description="最大5万ずつ借金可能")
 async def 借金(interaction: discord.Interaction, amount: int):
-    await interaction.response.defer(ephemeral=True)  
+    await interaction.response.defer(ephemeral=True)
 
     user_id = str(interaction.user.id)
     admin_ids = ["513153492165197835", "698894367225544735"]
@@ -901,7 +901,7 @@ async def 出目設定(ctx, *, dice_input: str):
     admin_ids = ["513153492165197835", "1075092388835512330"]
 
     if str(ctx.author.id) not in admin_ids:
-        await ctx.send("このコマンドは管理者のみ使用できます。", delete_after=5)
+        await ctx.send("このコマンドは管理者のみ使用できます。", ephemeral=True)
         return
 
     try:
@@ -909,11 +909,11 @@ async def 出目設定(ctx, *, dice_input: str):
         if len(dice) != 3 or any(d < 1 or d > 6 for d in dice):
             raise ValueError
 
-        manual_dice_rolls[ctx.author.id] = dice
-        await ctx.send(f"出目を {dice} に設定しました！", delete_after=5)
+        manual_dice_rolls[str(ctx.author.id)] = dice
+        await ctx.send(f"✅ 出目を {dice} に設定しました！", ephemeral=True)
 
     except ValueError:
-        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", delete_after=5)
+        await ctx.send("⚠ 正しい形式で入力してください！ 例: `!出目設定 1,1,1`", ephemeral=True)
 
 @bot.command(name="履歴削除", description="メッセージ履歴を全て削除します。")
 async def 履歴削除(ctx):

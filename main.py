@@ -20,7 +20,6 @@ openai.api_key = os.getenv('openai')
 model_engine = "gpt-3.5-turbo"
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
-bot.remove_command("help")
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 

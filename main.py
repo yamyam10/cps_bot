@@ -586,11 +586,11 @@ class Dice_vs_Button(ui.View):
         #     dice = [1, 1, 1]
 
         if user_id in manual_dice_rolls:
-            dice = manual_dice_rolls.pop(user_id)  # 1回使ったら削除（ばれにくくする）
+            dice = manual_dice_rolls.pop(user_id)
         else:
             dice = [random.randint(1, 6) for _ in range(3)]
 
-        dice = [random.randint(1, 6) for _ in range(3)]
+        # dice = [random.randint(1, 6) for _ in range(3)]
         result_message, multiplier = get_vs_result(dice)
         strength = get_strength(dice)
         self.roll_attempts[user_id] += 1

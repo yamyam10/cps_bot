@@ -369,6 +369,7 @@ CURRENCY = "BM"
 cred = credentials.Certificate(firebase_data)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+manual_dice_rolls = {}
 
 # Firestoreからユーザーの所持金をロード
 def load_balances():
@@ -587,6 +588,7 @@ class Dice_vs_Button(ui.View):
 
         if user_id in manual_dice_rolls:
             dice = manual_dice_rolls.pop(user_id)
+            print(f"出目適用: {user_id} -> {dice}")
         else:
             dice = [random.randint(1, 6) for _ in range(3)]
 
@@ -894,8 +896,6 @@ async def test(ctx):
     embed = discord.Embed(title="正常に動作しています。", color=discord.Colour.purple())
     await ctx.send(embed=embed)
 
-manual_dice_rolls = {}
-
 @bot.command(name="出目設定")
 async def 出目設定(ctx, *, dice_input: str):
     admin_ids = ["513153492165197835", "1075092388835512330"]
@@ -910,10 +910,24 @@ async def 出目設定(ctx, *, dice_input: str):
             raise ValueError
 
         manual_dice_rolls[str(ctx.author.id)] = dice
-        await ctx.send(f"✅ 出目を {dice} に設定しました！", ephemeral=True)
+        print(f"出目設定: {ctx.author.id} -> {dice}")
+
+        await ctx.send(f"出目を {dice} に設定しました！", ephemeral=True)
 
     except ValueError:
-        await ctx.send("⚠ 正しい形式で入力してください！ 例: `!出目設定 1,1,1`", ephemeral=True)
+        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", ephemeral=True)
+
+@bot.command(name="出目確認")
+async def 出目確認(ctx):
+    if not manual_dice_rolls:
+        await ctx.send("現在設定されている出目はありません。", delete_after=5)
+        return
+
+    message = "**現在設定されている出目:**\n"
+    for user_id, dice in manual_dice_rolls.items():
+        message += f"<@{user_id}>: {dice}\n"
+
+    await ctx.send(message, delete_after=5)
 
 @bot.command(name="履歴削除", description="メッセージ履歴を全て削除します。")
 async def 履歴削除(ctx):

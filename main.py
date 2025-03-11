@@ -822,8 +822,15 @@ async def 借金(interaction: discord.Interaction, amount: int):
 
     balances, debts = load_balances()
 
-    debts[user_id] = debts.get(user_id, 0) + amount
-    balances[user_id] += amount
+    # 借金前の所持金がマイナスの場合
+    if balances[user_id] < 0:
+        required_amount = 50000 - balances[user_id]
+        debts[user_id] += required_amount
+        balances[user_id] = 50000
+    else:
+        # 通常の借金処理
+        debts[user_id] += amount
+        balances[user_id] += amount
 
     save_balances(balances, debts)
 

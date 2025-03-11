@@ -1,4 +1,4 @@
-import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json, firebase_admin
+import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json, firebase_admin, re
 from discord.ext import commands, tasks
 from discord import app_commands
 from oauth2client.service_account import ServiceAccountCredentials
@@ -440,6 +440,29 @@ def get_strength(dice):
     else:
         return 0
 
+def kanji2num(text):
+    kanji_dict = {
+        "十": 10, "百": 100, "千": 1000, "万": 10000, "億": 100000000
+    }
+    num = 0
+    temp = 0
+    last_unit = 1
+
+    for char in text:
+        if char.isdigit():
+            temp = temp * 10 + int(char)  # 数字ならそのまま加算
+        elif char in kanji_dict:
+            unit = kanji_dict[char]
+            if temp == 0:
+                temp = 1  # 「万」の前に数字がない場合は1万として扱う
+            num += temp * unit
+            temp = 0
+            last_unit = unit
+        else:
+            return None  # 無効な文字が含まれていたら変換不可
+
+    return num + temp if temp else num  # 残りを加算
+
 class Dice_vs_Button(ui.View):
     def __init__(self, user1, user2, bot):
         super().__init__(timeout=None)
@@ -526,17 +549,24 @@ class Dice_vs_Button(ui.View):
 
         self.betting_in_progress = True
 
-        await interaction.response.send_message("掛け金を入力してください！", ephemeral=True)
+        await interaction.response.send_message("掛け金を入力してください！ (例: `50000`, `５万`, `6千`, `100万`)", ephemeral=True)
 
         def check(msg):
             return msg.author.id == self.user1.id and msg.channel == interaction.channel
 
         try:
             bet_msg = await bot.wait_for("message", check=check, timeout=30)  # 30秒以内の入力を要求
-            bet_amount = int(bet_msg.content)
+            bet_input = bet_msg.content.strip()
 
-            if bet_amount <= 0 or bet_amount > balances.get(str(self.user1.id), 0):
-                await interaction.followup.send("無効な掛け金です。所持金の範囲内で入力してください。", ephemeral=True)
+            # 漢数字かどうかを判定
+            if re.search(r"[一二三四五六七八九十百千万億]", bet_input):
+                bet_amount = kanji2num(bet_input)
+            else:
+                bet_amount = int(bet_input)
+
+            # 変換に失敗した場合
+            if bet_amount is None or bet_amount <= 0 or bet_amount > balances.get(str(self.user1.id), 0):
+                await interaction.followup.send("無効な掛け金です。所持金の範囲内で正しい数字を入力してください。", ephemeral=True)
                 self.betting_in_progress = False  # 入力失敗時にフラグをリセット
                 return
 
@@ -544,12 +574,12 @@ class Dice_vs_Button(ui.View):
             await interaction.followup.send(f"掛け金を {self.bet_amount} {CURRENCY} に設定しました！")
 
         except ValueError:
-            await interaction.followup.send("無効な金額です。数値を入力してください。", ephemeral=True)
+            await interaction.followup.send("無効な金額です。数値または漢数字（例: `５万`）を入力してください。", ephemeral=True)
         except asyncio.TimeoutError:
             await interaction.followup.send("掛け金の入力時間が切れました。もう一度ボタンを押してください。", ephemeral=True)
 
         self.betting_in_progress = False
-
+        
     @ui.button(label="サイコロを振る (親)", style=discord.ButtonStyle.primary)
     async def roll_dice_user1(self, interaction: discord.Interaction, button: ui.Button):
         if interaction.user.id != self.user1.id:
@@ -588,7 +618,6 @@ class Dice_vs_Button(ui.View):
 
         if str(user_id) in manual_dice_rolls and self.roll_attempts[user_id] == 0:
             dice = manual_dice_rolls.pop(str(user_id))
-            print(f"🎲 出目適用: {user_id} -> {dice}")
         else:
             dice = [random.randint(1, 6) for _ in range(3)]
 

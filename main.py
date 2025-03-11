@@ -586,9 +586,9 @@ class Dice_vs_Button(ui.View):
         # else:
         #     dice = [1, 1, 1]
 
-        if user_id in manual_dice_rolls:
-            dice = manual_dice_rolls.pop(user_id)
-            print(f"出目適用: {user_id} -> {dice}")
+        if str(user_id) in manual_dice_rolls and self.roll_attempts[user_id] == 0:
+            dice = manual_dice_rolls.pop(str(user_id))
+            print(f"🎲 出目適用: {user_id} -> {dice}")
         else:
             dice = [random.randint(1, 6) for _ in range(3)]
 

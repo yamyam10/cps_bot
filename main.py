@@ -20,6 +20,7 @@ openai.api_key = os.getenv('openai')
 model_engine = "gpt-3.5-turbo"
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+bot.remove_command("help")
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -900,7 +901,7 @@ async def 出目設定(ctx, *, dice_input: str):
     admin_ids = ["513153492165197835", "1075092388835512330"]
 
     if str(ctx.author.id) not in admin_ids:
-        await ctx.send("このコマンドは管理者のみ使用できます。", delete_after=5)
+        await ctx.send("このコマンドは管理者のみ使用できます。", delete_after=5)(ephemeral=True) 
         return
 
     try:
@@ -909,10 +910,10 @@ async def 出目設定(ctx, *, dice_input: str):
             raise ValueError
 
         manual_dice_rolls[ctx.author.id] = dice
-        await ctx.send(f"出目を {dice} に設定しました！", delete_after=5)
+        await ctx.send(f"出目を {dice} に設定しました！", delete_after=5)(ephemeral=True) 
 
     except ValueError:
-        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", delete_after=5)
+        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", delete_after=5)(ephemeral=True) 
 
 @bot.command(name="履歴削除", description="メッセージ履歴を全て削除します。")
 async def 履歴削除(ctx):
@@ -1195,45 +1196,45 @@ async def on_message_delete(message):
                             await asyncio.sleep(60)
                             os.remove(file_path)
 
-@bot.event
-async def on_message(message):
-    global model_engine
-    if message.author.bot:
-        return
-    if message.author == bot.user:
-        return
+# @bot.event
+# async def on_message(message):
+#     global model_engine
+#     if message.author.bot:
+#         return
+#     if message.author == bot.user:
+#         return
 
-    # メンションに反応
-    if bot.user in message.mentions:
-        try:
-            # プロンプトをそのまま使用
-            prompt = message.content.strip()
-            if not prompt:
-                await message.channel.send("質問内容がありません")
-                return
+#     # メンションに反応
+#     if bot.user in message.mentions:
+#         try:
+#             # プロンプトをそのまま使用
+#             prompt = message.content.strip()
+#             if not prompt:
+#                 await message.channel.send("質問内容がありません")
+#                 return
             
-            # OpenAIのChat APIを使用して応答を生成
-            completion = openai.ChatCompletion.create(
-                model=model_engine,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "送られてきた文章に対して優しく返信してください。"
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-            )
+#             # OpenAIのChat APIを使用して応答を生成
+#             completion = openai.ChatCompletion.create(
+#                 model=model_engine,
+#                 messages=[
+#                     {
+#                         "role": "system",
+#                         "content": "送られてきた文章に対して優しく返信してください。"
+#                     },
+#                     {
+#                         "role": "user",
+#                         "content": prompt
+#                     }
+#                 ],
+#             )
 
-            response = completion.choices[0].message['content']
-            await message.channel.send(response)
-        except openai.error.RateLimitError:
-            await message.channel.send("現在のAPI使用量制限を超えています。プランのアップグレードや使用量の確認を行ってください。")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            await message.channel.send("エラーが発生しました。")
+#             response = completion.choices[0].message['content']
+#             await message.channel.send(response)
+#         except openai.error.RateLimitError:
+#             await message.channel.send("現在のAPI使用量制限を超えています。プランのアップグレードや使用量の確認を行ってください。")
+#         except Exception as e:
+#             import traceback
+#             traceback.print_exc()
+#             await message.channel.send("エラーが発生しました。")
 
 bot.run(TOKEN)

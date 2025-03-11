@@ -585,6 +585,11 @@ class Dice_vs_Button(ui.View):
         # else:
         #     dice = [1, 1, 1]
 
+        if user_id in manual_dice_rolls:
+            dice = manual_dice_rolls.pop(user_id)  # 1回使ったら削除（ばれにくくする）
+        else:
+            dice = [random.randint(1, 6) for _ in range(3)]
+
         dice = [random.randint(1, 6) for _ in range(3)]
         result_message, multiplier = get_vs_result(dice)
         strength = get_strength(dice)
@@ -888,6 +893,27 @@ async def 借金返済(interaction: discord.Interaction, amount: int):
 async def test(ctx):
     embed = discord.Embed(title="正常に動作しています。", color=discord.Colour.purple())
     await ctx.send(embed=embed)
+
+manual_dice_rolls = {}
+
+@bot.command(name="出目設定")
+async def 出目設定(ctx, *, dice_input: str):
+    admin_ids = ["513153492165197835", "1075092388835512330"]
+
+    if str(ctx.author.id) not in admin_ids:
+        await ctx.send("このコマンドは管理者のみ使用できます。", delete_after=5)(ephemeral=True) 
+        return
+
+    try:
+        dice = [int(num) for num in dice_input.split(",")]
+        if len(dice) != 3 or any(d < 1 or d > 6 for d in dice):
+            raise ValueError
+
+        manual_dice_rolls[ctx.author.id] = dice
+        await ctx.send(f"出目を {dice} に設定しました！", delete_after=5)(ephemeral=True) 
+
+    except ValueError:
+        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", delete_after=5)(ephemeral=True) 
 
 @bot.command(name="履歴削除", description="メッセージ履歴を全て削除します。")
 async def 履歴削除(ctx):

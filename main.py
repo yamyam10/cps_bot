@@ -901,7 +901,7 @@ async def 出目設定(ctx, *, dice_input: str):
     admin_ids = ["513153492165197835", "1075092388835512330"]
 
     if str(ctx.author.id) not in admin_ids:
-        await ctx.send("このコマンドは管理者のみ使用できます。", delete_after=5)(ephemeral=True)
+        await ctx.send("このコマンドは管理者のみ使用できます。", delete_after=5)
         return
 
     try:
@@ -910,10 +910,10 @@ async def 出目設定(ctx, *, dice_input: str):
             raise ValueError
 
         manual_dice_rolls[ctx.author.id] = dice
-        await ctx.send(f"出目を {dice} に設定しました！", delete_after=5)(ephemeral=True)
+        await ctx.send(f"出目を {dice} に設定しました！", delete_after=5)
 
     except ValueError:
-        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", delete_after=5)(ephemeral=True)
+        await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", delete_after=5)
 
 @bot.command(name="履歴削除", description="メッセージ履歴を全て削除します。")
 async def 履歴削除(ctx):

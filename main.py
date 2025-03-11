@@ -441,46 +441,45 @@ def get_strength(dice):
         return 0
 
 def kanji2num(text):
-    """漢数字と数字が混ざった表記を数値に変換する"""
+    """漢数字・数字の混合表記を正しく数値に変換（万進法対応）"""
     kanji_dict = {
         "十": 10, "百": 100, "千": 1000,
         "万": 10000, "億": 100000000, "兆": 1000000000000
     }
 
-    num = 0
-    temp = 0  # 一時的な数値
-    section_total = 0  # 「万」「億」「兆」単位で累積する
-    last_unit = 1  # 最後の単位（「万」「億」など）
+    num = 0  # 最終的な数値
+    temp = 0  # 一時的な数値（十・百・千）
+    section_total = 0  # 「万」「億」単位での合計
+    last_unit = 1  # 直前の単位（万・億など）
+    has_digit = False  # 数字が出現したか
 
-    # 漢数字と数字の混合を考慮して、すべての数字を統一
-    text = re.sub(r"(\d+)", lambda m: str(int(m.group(1))), text)  # 全角数字を半角に変換
-    text = text.replace("０", "0").replace("１", "1").replace("２", "2") \
-               .replace("３", "3").replace("４", "4").replace("５", "5") \
-               .replace("６", "6").replace("７", "7").replace("８", "8") \
-               .replace("９", "9")
+    # 半角変換（全角→半角）
+    text = re.sub(r"(\d+)", lambda m: str(int(m.group(1))), text)
 
     for char in text:
         if char.isdigit():
-            temp = temp * 10 + int(char)  # 連続する数字を数値化
+            temp = temp * 10 + int(char)  # 数字が続く場合
+            has_digit = True
         elif char in kanji_dict:
             unit = kanji_dict[char]
-            if unit >= 10000:  # 万・億・兆の処理
-                if temp == 0:
-                    temp = 1  # 「万」などの前に数字がない場合は1万として扱う
-                section_total += temp * last_unit  # 現在のセクションを合計
-                num += section_total * unit  # 「万」「億」「兆」ごとに計算
+            if unit >= 10000:  # 「万」以上の単位が出たら
+                if temp == 0 and not has_digit:
+                    temp = 1  # 例: 「万」だけの時は 1万
+
+                section_total += temp * last_unit
+                num += section_total * unit
                 section_total = 0  # セクションリセット
                 last_unit = unit
                 temp = 0
             else:
                 if temp == 0:
-                    temp = 1  # 例えば「十万」の場合、十の前が空なので1として扱う
+                    temp = 1  # 例: 「十万」のように前に数字がない場合
                 section_total += temp * unit
                 temp = 0
         else:
-            return None  # 無効な文字が含まれていたら変換不可
+            return None  # 無効な文字が含まれている場合
 
-    num += section_total + temp  # 最後に残った数値を加算
+    num += section_total + temp  # 最後の値を加算
     return num
 
 class Dice_vs_Button(ui.View):

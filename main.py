@@ -440,8 +440,6 @@ def get_strength(dice):
     else:
         return 0
 
-import re
-
 def kanji2num(text):
     """漢数字と数字が混ざった表記を数値に変換する"""
     kanji_dict = {

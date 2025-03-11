@@ -440,28 +440,49 @@ def get_strength(dice):
     else:
         return 0
 
+import re
+
 def kanji2num(text):
+    """漢数字と数字が混ざった表記を数値に変換する"""
     kanji_dict = {
-        "十": 10, "百": 100, "千": 1000, "万": 10000, "億": 100000000
+        "十": 10, "百": 100, "千": 1000,
+        "万": 10000, "億": 100000000, "兆": 1000000000000
     }
+
     num = 0
-    temp = 0
-    last_unit = 1
+    temp = 0  # 一時的な数値
+    section_total = 0  # 万・億・兆ごとに累積する
+    last_unit = 1  # 最後の単位（「万」「億」など）
+
+    text = re.sub(r"(\d+)", lambda m: str(int(m.group(1))), text)  # 全角数字を半角に変換
+    text = text.replace("０", "0").replace("１", "1").replace("２", "2") \
+               .replace("３", "3").replace("４", "4").replace("５", "5") \
+               .replace("６", "6").replace("７", "7").replace("８", "8") \
+               .replace("９", "9")
 
     for char in text:
         if char.isdigit():
-            temp = temp * 10 + int(char)  # 数字ならそのまま加算
+            temp = temp * 10 + int(char)  # 連続する数字を数値化
         elif char in kanji_dict:
             unit = kanji_dict[char]
-            if temp == 0:
-                temp = 1  # 「万」の前に数字がない場合は1万として扱う
-            num += temp * unit
-            temp = 0
-            last_unit = unit
+            if unit >= 10000:  # 万・億・兆の処理
+                if temp == 0:
+                    temp = 1  # 「万」などの前に数字がない場合は1万として扱う
+                section_total += temp * last_unit  # 現在のセクションを合計
+                if char in ["万", "億", "兆"]:
+                    num += section_total * unit  # 「万」「億」「兆」ごとに計算
+                    section_total = 0  # セクションリセット
+                last_unit = unit
+                temp = 0
+            else:
+                if temp == 0:
+                    temp = 1  # 例えば「十万」の場合、十の前が空なので1として扱う
+                section_total += temp * unit
+                temp = 0
         else:
             return None  # 無効な文字が含まれていたら変換不可
 
-    return num + temp if temp else num  # 残りを加算
+    return num + section_total + temp  # 最後に残った数値を加算
 
 class Dice_vs_Button(ui.View):
     def __init__(self, user1, user2, bot):
@@ -549,7 +570,7 @@ class Dice_vs_Button(ui.View):
 
         self.betting_in_progress = True
 
-        await interaction.response.send_message("掛け金を入力してください！ (例: `50000`, `５万`, `6千`, `100万`)", ephemeral=True)
+        await interaction.response.send_message("掛け金を入力してください！", ephemeral=True)
 
         def check(msg):
             return msg.author.id == self.user1.id and msg.channel == interaction.channel

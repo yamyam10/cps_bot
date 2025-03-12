@@ -426,8 +426,8 @@ def get_vs_result(dice):
 # 出目の強さを決定
 def get_strength(dice):
     dice.sort()
-    if dice[0] == dice[1] == dice[2]:
-        return 100 if dice[0] == 1 else 90
+    if dice[0] == dice[1] == dice[2]:  # アラシ（ゾロ目）
+        return 110 if dice[0] == 1 else 100 - (6 - dice[0])  # ピンゾロ（1,1,1）が最強（110）
     elif dice == [4, 5, 6]:
         return 80
     elif dice == [1, 2, 3]:

@@ -836,7 +836,7 @@ async def 所持金ランキング(interaction: discord.Interaction):
             user_balance_text = f"総資産: {net_worth} {CURRENCY}\n{balance_text}"
 
     if user_rank and user_rank > 10:
-        embed.add_field(name=f"\n--- あなたの順位 ---", value=f"#{user_rank} {interaction.user.mention}: {user_balance_text}", inline=False)
+        embed.add_field(name=f"\n--- あなたの順位 ---", value=f"{user_rank}位 {interaction.user.mention}\n{user_balance_text}", inline=False)
 
     await interaction.followup.send(embed=embed)
 

@@ -674,8 +674,8 @@ class Dice_vs_Button(ui.View):
             result_embed = discord.Embed(
                 title="対戦結果",
                 description=f"引き分け！\n"
-                            f"{self.user1.mention} の所持金: {balances.get(str(self.user1.id), 0)}{CURRENCY}\n"
-                            f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
+                            f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
+                            f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",
                 color=discord.Color.gold()
             )
             load_balances()
@@ -711,9 +711,10 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner.mention} 勝利！\n"
-                        f"掛け金 {self.bet_amount}{CURRENCY} の {dice_result_winner[2]} 倍で {amount_won}{CURRENCY} 獲得\n"
-                        f"{self.user1.mention} の所持金: {balances.get(str(self.user1.id), 0)}{CURRENCY}\n"
-                        f"{self.user2.mention} の所持金: {balances.get(str(self.user2.id), 0)}{CURRENCY}",
+                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の {dice_result_winner[2]} 倍で "
+                        f"{format(amount_won, ',')}{CURRENCY} 獲得\n"
+                        f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
+                        f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",
             color=discord.Color.gold()
         )
         load_balances()
@@ -839,7 +840,7 @@ async def 所持金ランキング(interaction: discord.Interaction):
 
     if user_rank and user_rank > 10:
         embed.add_field(
-            name="🔹 あなたの順位 🔹",
+            name="あなたの順位",
             value=f"{user_rank}位 {interaction.user.mention}\n{user_balance_text}",
             inline=False
         )

@@ -374,15 +374,15 @@ manual_dice_rolls = {}
 # Firestoreからユーザーの所持金をロード
 def load_balances():
     balances = {}
-    debts = {}
+    debts = {}  # 借金データ
 
     docs = db.collection("balances").stream()
     for doc in docs:
         data = doc.to_dict()
         balances[doc.id] = data.get("balance", 0)
-        debts[doc.id] = data.get("debt", 0)
+        debts[doc.id] = data.get("debt", 0)  # デフォルトで0（借金なし）
 
-    return balances, debts
+    return balances, debts  # 所持金と借金を両方返す
 
 def save_balances(balances, debts):
     """Firestoreにユーザーの所持金データと借金データを保存"""
@@ -848,14 +848,13 @@ async def 所持金(interaction: discord.Interaction):
     balance = balances.get(user_id, 0)
     debt_amount = debts.get(user_id, 0)
 
+    balance_text = f"{format(balance, ',')} {CURRENCY}"
     if debt_amount > 0:
-        balance_text = f"{balance} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
-    else:
-        balance_text = f"{balance} {CURRENCY}"
+        balance_text += f" (借金: {format(debt_amount, ',')} {CURRENCY})"
 
     embed = discord.Embed(
         title=f"{interaction.user.mention}の所持金",
-        description=f"{balance_text}",
+        description=balance_text,
         color=discord.Color.purple()
     )
 

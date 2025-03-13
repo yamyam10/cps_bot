@@ -441,7 +441,6 @@ def get_strength(dice):
         return 0
 
 def kanji2num(text):
-    """漢数字・数字の混合表記を正しく数値に変換（万進法対応）"""
     kanji_dict = {
         "十": 10, "百": 100, "千": 1000,
         "万": 10000, "億": 100000000, "兆": 1000000000000
@@ -868,14 +867,17 @@ async def 所持金(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="借金", description="最大5万ずつ借金可能")
-async def 借金(interaction: discord.Interaction, amount: int):
+async def 借金(interaction: discord.Interaction, amount: str):
     await interaction.response.defer(ephemeral=True)
 
     user_id = str(interaction.user.id)
     admin_ids = ["513153492165197835", "698894367225544735"]
 
-    if amount <= 0:
-        await interaction.followup.send("借金額は正の数を入力してください。", ephemeral=True)
+    amount = re.sub(r'[^\d十百千万億兆]', '', amount)
+    amount = kanji2num(amount) if not amount.isdigit() else int(amount)
+
+    if amount is None or amount <= 0:
+        await interaction.followup.send("無効な借金額です。半角数字または漢数字で入力してください。", ephemeral=True)
         return
 
     ensure_balance(user_id)
@@ -887,13 +889,11 @@ async def 借金(interaction: discord.Interaction, amount: int):
 
     balances, debts = load_balances()
 
-    # 借金前の所持金がマイナスの場合
     if balances[user_id] < 0:
         required_amount = 50000 - balances[user_id]
         debts[user_id] += required_amount
         balances[user_id] = amount
     else:
-        # 通常の借金処理
         debts[user_id] += amount
         balances[user_id] += amount
 

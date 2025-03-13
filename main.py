@@ -903,9 +903,9 @@ async def 借金(interaction: discord.Interaction, amount: int):
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 class RepayDebtView(ui.View):
-    def __init__(self, user_id):
+    def __init__(self, interaction):
         super().__init__(timeout=60)  # 60秒で無効化
-        self.user_id = user_id
+        self.interaction = interaction
 
     @ui.button(label="全額返済", style=discord.ButtonStyle.success)
     async def full_repayment(self, interaction: discord.Interaction, button: ui.Button):
@@ -960,12 +960,11 @@ async def repay_debt(interaction: discord.Interaction, amount: str):
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="借金返済", description="借金を返済できます（'all' で全額返済）")
-async def 借金返済(interaction: discord.Interaction, amount: str = None):
-    await interaction.response.defer(ephemeral=True)
-
-    if amount is None:
-        view = RepayDebtView(interaction.user.id)
-        await interaction.followup.send("借金返済メニュー", view=view, ephemeral=True)
+async def 借金返済(interaction: discord.Interaction, amount: str = ""):
+    if amount == "":
+        # ボタン付きのメニューを表示
+        view = RepayDebtView(interaction)
+        await interaction.response.send_message("借金返済メニュー", view=view, ephemeral=True)
     else:
         await repay_debt(interaction, amount)
 

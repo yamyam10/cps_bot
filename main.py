@@ -875,7 +875,7 @@ async def 借金(interaction: discord.Interaction, amount: int):
 
     max_allowed_loan = 50000
     if user_id not in admin_ids and amount > max_allowed_loan:
-        await interaction.followup.send(f"1回の借金は最大 {max_allowed_loan} {CURRENCY} までです。", ephemeral=True)
+        await interaction.followup.send(f"1回の借金は最大 {format(max_allowed_loan, ',')} {CURRENCY} までです。", ephemeral=True)
         return
 
     balances, debts = load_balances()
@@ -884,7 +884,7 @@ async def 借金(interaction: discord.Interaction, amount: int):
     if balances[user_id] < 0:
         required_amount = 50000 - balances[user_id]
         debts[user_id] += required_amount
-        balances[user_id] = 50000
+        balances[user_id] = amount
     else:
         # 通常の借金処理
         debts[user_id] += amount
@@ -894,9 +894,9 @@ async def 借金(interaction: discord.Interaction, amount: int):
 
     embed = discord.Embed(
         title="借金完了",
-        description=f"{interaction.user.mention} は **{amount} {CURRENCY}** 借りました。\n"
-                    f"**現在の所持金:** {balances[user_id]} {CURRENCY}\n"
-                    f"**現在の借金:** {debts[user_id]} {CURRENCY}",
+        description=f"{interaction.user.mention} は **{format(amount, ',')} {CURRENCY}** 借りました。\n"
+                    f"**現在の所持金:** {format(balances[user_id], ',')} {CURRENCY}\n"
+                    f"**現在の借金:** {format(debts[user_id], ',')} {CURRENCY}",
         color=discord.Color.red()
     )
 

@@ -374,13 +374,13 @@ manual_dice_rolls = {}
 # Firestoreからユーザーの所持金をロード
 def load_balances():
     balances = {}
-    debts = {}  # 借金データ
+    debts = {}
 
     docs = db.collection("balances").stream()
     for doc in docs:
         data = doc.to_dict()
-        balances[doc.id] = "{:,}".format(data.get("balance", 0))
-        debts[doc.id] = "{:,}".format(data.get("debt", 0))
+        balances[doc.id] = data.get("balance", 0)
+        debts[doc.id] = data.get("debt", 0)
 
     return balances, debts
 

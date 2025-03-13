@@ -800,7 +800,6 @@ async def 所持金ランキング(interaction: discord.Interaction):
     user_rank = None
     user_balance_text = None
     rank = 0
-
     displayed_count = 0
 
     for uid, net_worth in sorted_assets:
@@ -820,23 +819,30 @@ async def 所持金ランキング(interaction: discord.Interaction):
         balance = balances.get(uid, 0)
         debt_amount = debts.get(uid, 0)
 
+        balance_text = f"{format(balance, ',')} {CURRENCY}"
         if debt_amount > 0:
-            balance_text = f"{balance} {CURRENCY} (借金: {debt_amount} {CURRENCY})"
-        else:
-            balance_text = f"{balance} {CURRENCY}"
+            balance_text += f" (借金: {format(debt_amount, ',')} {CURRENCY})"
 
         rank += 1
 
         if displayed_count < 10:
-            embed.add_field(name=f"{rank}位 {user_display}", value=f"総資産: {net_worth} {CURRENCY}\n{balance_text}", inline=False)
+            embed.add_field(
+                name=f"{rank}位 {user_display}",
+                value=f"総資産: **{format(net_worth, ',')} {CURRENCY}**\n{balance_text}",
+                inline=False
+            )
             displayed_count += 1
         
         if uid == user_id:
             user_rank = rank
-            user_balance_text = f"総資産: {net_worth} {CURRENCY}\n{balance_text}"
+            user_balance_text = f"総資産: **{format(net_worth, ',')} {CURRENCY}**\n{balance_text}"
 
     if user_rank and user_rank > 10:
-        embed.add_field(name=f"\n--- あなたの順位 ---", value=f"{user_rank}位 {interaction.user.mention}\n{user_balance_text}", inline=False)
+        embed.add_field(
+            name="🔹 あなたの順位 🔹",
+            value=f"{user_rank}位 {interaction.user.mention}\n{user_balance_text}",
+            inline=False
+        )
 
     await interaction.followup.send(embed=embed)
 
@@ -967,7 +973,7 @@ async def 借金返済(interaction: discord.Interaction, amount: str = ""):
         await interaction.response.send_message("借金返済メニュー", view=view, ephemeral=True)
     else:
         await repay_debt(interaction, amount)
-
+        
 @bot.command()
 async def test(ctx):
     embed = discord.Embed(title="正常に動作しています。", color=discord.Colour.purple())

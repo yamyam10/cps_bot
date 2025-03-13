@@ -902,15 +902,19 @@ async def 借金(interaction: discord.Interaction, amount: int):
 
     await interaction.followup.send(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="借金返済", description="借金を返済できます")
-async def 借金返済(interaction: discord.Interaction, amount: int):
-    await interaction.response.defer(ephemeral=True)  
+class RepayDebtView(ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=60)  # 60秒で無効化
+        self.user_id = user_id
+
+    @ui.button(label="全額返済", style=discord.ButtonStyle.success)
+    async def full_repayment(self, interaction: discord.Interaction, button: ui.Button):
+        await repay_debt(interaction, "all")
+
+async def repay_debt(interaction: discord.Interaction, amount: str):
+    await interaction.response.defer(ephemeral=True)
 
     user_id = str(interaction.user.id)
-
-    if amount <= 0:
-        await interaction.followup.send("返済額は正の数を入力してください。", ephemeral=True)
-        return
 
     # Firestore からデータ取得
     balances, debts = load_balances()
@@ -920,10 +924,21 @@ async def 借金返済(interaction: discord.Interaction, amount: int):
         await interaction.followup.send("借金はありません！", ephemeral=True)
         return
 
-    # 返済額が借金を超えないようにする
-    repayment_amount = min(amount, current_debt, balances[user_id])
+    # 'all' が指定された場合、全額返済
+    if amount.lower() == "all":
+        repayment_amount = min(current_debt, balances[user_id])  # 借金額 or 所持金のどちらか少ない方
+    else:
+        try:
+            repayment_amount = int(amount)
+        except ValueError:
+            await interaction.followup.send("無効な返済額です。数値を入力するか 'all' を指定してください。", ephemeral=True)
+            return
 
     if repayment_amount <= 0:
+        await interaction.followup.send("返済額は正の数を入力してください。", ephemeral=True)
+        return
+
+    if repayment_amount > balances[user_id]:
         await interaction.followup.send("所持金が足りないため、借金を返済できません。", ephemeral=True)
         return
 
@@ -936,11 +951,23 @@ async def 借金返済(interaction: discord.Interaction, amount: int):
 
     embed = discord.Embed(
         title="借金返済",
-        description=f"{interaction.user.mention} は {repayment_amount} {CURRENCY} 返済しました。\n現在の所持金: {balances[user_id]} {CURRENCY}\n残りの借金: {debts[user_id]} {CURRENCY}",
+        description=f"{interaction.user.mention} は **{format(repayment_amount, ',')} {CURRENCY}** 返済しました。\n"
+                    f"**現在の所持金:** {format(balances[user_id], ',')} {CURRENCY}\n"
+                    f"**残りの借金:** {format(debts[user_id], ',')} {CURRENCY}",
         color=discord.Color.green()
     )
 
     await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="借金返済", description="借金を返済できます（'all' で全額返済）")
+async def 借金返済(interaction: discord.Interaction, amount: str = None):
+    await interaction.response.defer(ephemeral=True)
+
+    if amount is None:
+        view = RepayDebtView(interaction.user.id)
+        await interaction.followup.send("借金返済メニュー", view=view, ephemeral=True)
+    else:
+        await repay_debt(interaction, amount)
 
 @bot.command()
 async def test(ctx):

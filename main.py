@@ -379,10 +379,10 @@ def load_balances():
     docs = db.collection("balances").stream()
     for doc in docs:
         data = doc.to_dict()
-        balances[doc.id] = data.get("balance", 0)
-        debts[doc.id] = data.get("debt", 0)  # デフォルトで0（借金なし）
+        balances[doc.id] = "{:,}".format(data.get("balance", 0))
+        debts[doc.id] = "{:,}".format(data.get("debt", 0))
 
-    return balances, debts  # 所持金と借金を両方返す
+    return balances, debts
 
 def save_balances(balances, debts):
     """Firestoreにユーザーの所持金データと借金データを保存"""

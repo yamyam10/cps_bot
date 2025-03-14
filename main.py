@@ -679,7 +679,7 @@ class Dice_vs_Button(ui.View):
         user1_strength = self.dice_result[self.user1.id][3]
         user2_strength = self.dice_result[self.user2.id][3]
 
-        now = datetime.datetime.utcnow()
+        now = datetime.utcnow()
         vip_users = load_vip_users()
 
         if user1_strength == user2_strength:

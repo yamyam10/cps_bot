@@ -65,8 +65,8 @@ async def on_ready():
     target_channel = bot.get_channel(target_channel_id)
 
     if target_channel:
-        japan_timezone = timezone(timedelta(hours=9))
-        now = datetime.now(japan_timezone)
+        japan_timezone = timezone(timedelta(hours=9))  # JST (UTC+9)
+        now = datetime.now(japan_timezone)  # 修正後
         login_message = f"{now.strftime('%Y年%m月%d日 %H:%M:%S')} ログインしました"
         await target_channel.send(login_message)
     else:

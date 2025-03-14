@@ -1,11 +1,10 @@
 import discord, os, random, asyncio, datetime, pytz, openai, aiohttp, gspread, pytesseract, json, firebase_admin, re
 from discord.ext import commands, tasks
-from discord import app_commands
+from discord import app_commands, ui, Embed, Color
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
-from discord import ui
 from firebase_admin import credentials, firestore
-
+from datetime import datetime, timedelta
 load_dotenv()
 
 #TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
@@ -973,7 +972,130 @@ async def 借金返済(interaction: discord.Interaction, amount: str = ""):
         await interaction.response.send_message("借金返済メニュー", view=view, ephemeral=True)
     else:
         await repay_debt(interaction, amount)
+
+VIP_COST = 10_000_000  # VIP加入費用（1000万）
+VIP_DURATION = timedelta(weeks=1)  # VIPの期間（1週間）
+VIP_BONUS_MIN = 0.05  # 勝利時のボーナス最小値（+5%）
+VIP_BONUS_MAX = 0.10  # 勝利時のボーナス最大値（+10%）
+VIP_LOSS_REDUCTION = 0.10  # 敗北時の損失軽減（10%還元）
+
+vip_users = {}
+
+class VIPView(ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=30)
+        self.user_id = user_id
+
+    @ui.button(label="VIPに加入する", style=discord.ButtonStyle.green)
+    async def join_vip(self, interaction: discord.Interaction, button: ui.Button):
+        user_id = str(interaction.user.id)
+        now = datetime.utcnow()
+
+        if user_id in vip_users and vip_users[user_id] > now:
+            await interaction.response.send_message("あなたはすでにVIPです！", ephemeral=True)
+            return
         
+        balances, debts = load_balances()
+
+        if balances.get(user_id, 0) < VIP_COST:
+            await interaction.response.send_message(f"VIP加入には **{format(VIP_COST, ',')} {CURRENCY}** 必要です。所持金が足りません。", ephemeral=True)
+            return
+
+        # 所持金からVIP料金を引く
+        balances[user_id] -= VIP_COST
+        vip_users[user_id] = now + VIP_DURATION  # VIP期間を1週間後に設定
+        save_balances(balances, debts)  # Firestore に保存する場合
+
+        embed = Embed(
+            title="🎉 VIP 加入完了！ 🎉",
+            description=f"{interaction.user.mention} は **VIP** になりました！\n"
+                        f"🏆 **特典**:\n"
+                        f"✅ **勝利時** : 獲得コイン +5%～10% ボーナス\n"
+                        f"✅ **敗北時** : 10% のコインが戻る\n"
+                        f"📅 **VIP有効期限:** {vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            color=Color.gold()
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        self.stop()
+
+    @ui.button(label="キャンセル", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message("VIP加入をキャンセルしました。", ephemeral=True)
+        self.stop()
+
+@bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
+async def vip加入(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+
+    if user_id in vip_users and vip_users[user_id] > datetime.utcnow():
+        await interaction.response.send_message("あなたはすでにVIPです！", ephemeral=True)
+        return
+
+    embed = Embed(
+        title="VIP加入確認",
+        description=f"VIPに加入すると **{format(VIP_COST, ',')} {CURRENCY}** を支払います。\n"
+                    "VIP期間は **1週間** です。\n"
+                    "本当にVIPになりますか？",
+        color=Color.orange()
+    )
+
+    await interaction.response.send_message(embed=embed, view=VIPView(user_id), ephemeral=True)
+
+
+@bot.tree.command(name="vip期間", description="現在のVIP期間を確認")
+async def vip期間(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    now = datetime.utcnow()
+
+    if user_id not in vip_users or vip_users[user_id] < now:
+        await interaction.response.send_message("あなたはVIPではありません。", ephemeral=True)
+        return
+
+    expiry_date = vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')
+    remaining_days = (vip_users[user_id] - now).days
+
+    embed = Embed(
+        title="VIPステータス",
+        description=f"**VIP有効期限:** {expiry_date}\n"
+                    f"**残り日数:** {remaining_days}日",
+        color=Color.blue()
+    )
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(name="vip延長", description="VIPの期間を延長する")
+async def vip延長(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    now = datetime.utcnow()
+
+    if user_id not in vip_users or vip_users[user_id] < now:
+        await interaction.response.send_message("あなたは現在VIPではありません。先に `/vip加入` してください。", ephemeral=True)
+        return
+
+    balances, debts = load_balances()
+
+    if balances.get(user_id, 0) < VIP_COST:
+        await interaction.response.send_message(f"VIP延長には **{format(VIP_COST, ',')} {CURRENCY}** 必要です。所持金が足りません。", ephemeral=True)
+        return
+
+    # 所持金からVIP延長料金を引く
+    balances[user_id] -= VIP_COST
+    vip_users[user_id] += VIP_DURATION  # 期間を1週間延長
+    save_balances(balances, debts)  # Firestore に保存する場合
+
+    expiry_date = vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')
+
+    embed = Embed(
+        title="VIP延長完了",
+        description=f"{interaction.user.mention} の VIP 期間が **1週間延長** されました！\n"
+                    f"**新しい有効期限:** {expiry_date}",
+        color=Color.green()
+    )
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @bot.command()
 async def test(ctx):
     embed = discord.Embed(title="正常に動作しています。", color=discord.Colour.purple())

@@ -704,24 +704,26 @@ class Dice_vs_Button(ui.View):
         is_winner_vip = str(winner.id) in vip_users and vip_users[str(winner.id)] > now
         is_loser_vip = str(loser.id) in vip_users and vip_users[str(loser.id)] > now
 
-        # 勝者の獲得コイン計算
-        base_amount_won = self.bet_amount * abs(self.dice_result[winner.id][2])
-        
+        # **勝者の獲得コイン計算**
+        base_multiplier = abs(self.dice_result[winner.id][2])  # 役に応じた倍率
+        base_amount_won = self.bet_amount * base_multiplier  # 基本の掛け金倍率計算
+
+        # VIPボーナス適用
         if is_winner_vip:
-            bonus_multiplier = random.uniform(VIP_BONUS_MIN, VIP_BONUS_MAX)  # 5%〜10%
-            amount_won = int(base_amount_won * (1 + bonus_multiplier))
+            bonus_multiplier = random.uniform(VIP_BONUS_MIN, VIP_BONUS_MAX)  # 5%〜10%ランダム
+            amount_won = int(base_amount_won * (1 + bonus_multiplier))  # 勝者の獲得額
         else:
-            amount_won = base_amount_won
+            amount_won = base_amount_won  # VIPでなければそのまま
 
-        # 敗者の損失計算 (本来失う額を計算)
-        amount_lost = amount_won  # 本来負けた側が失うべき金額
-
-        # VIPの場合は損失の 10% を還元
+        # **敗者の損失計算**
+        base_loss = self.bet_amount * base_multiplier  # アラシなどの倍率適用
         if is_loser_vip:
-            loss_reduction = int(amount_won * VIP_LOSS_REDUCTION)  # 10% 還元
-            amount_lost -= loss_reduction  # 10% を減算
+            loss_reduction = int(base_loss * VIP_LOSS_REDUCTION)  # 10% 還元
+            amount_lost = base_loss - loss_reduction  # VIPなら10%還元後の損失
+        else:
+            amount_lost = base_loss  # VIPでなければそのままの損失
 
-        # 更新処理
+        # **更新処理**
         if winner.id != self.bot.user.id:
             balances[str(winner.id)] += amount_won
         if loser.id != self.bot.user.id:
@@ -733,7 +735,7 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner.mention} 勝利！\n"
-                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の {self.dice_result[winner.id][2]} 倍で "
+                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{base_multiplier} 倍** で "
                         f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n"
                         f"{loser.mention} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"

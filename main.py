@@ -679,7 +679,7 @@ class Dice_vs_Button(ui.View):
         user1_strength = self.dice_result[self.user1.id][3]
         user2_strength = self.dice_result[self.user2.id][3]
 
-        now = datetime.utcnow()
+        now = datetime.datetime.utcnow()
         vip_users = load_vip_users()
 
         if user1_strength == user2_strength:
@@ -690,7 +690,6 @@ class Dice_vs_Button(ui.View):
                             f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",
                 color=discord.Color.gold()
             )
-            load_balances()
             await self.show_bot_dice_result(interaction)
             await interaction.followup.send(embed=result_embed)
             self.disable_buttons()
@@ -700,30 +699,19 @@ class Dice_vs_Button(ui.View):
         winner = self.user1 if user1_strength > user2_strength else self.user2
         loser = self.user2 if winner == self.user1 else self.user1
 
-        # 勝者・敗者のVIPステータスを確認
         is_winner_vip = str(winner.id) in vip_users and vip_users[str(winner.id)] > now
         is_loser_vip = str(loser.id) in vip_users and vip_users[str(loser.id)] > now
 
-        # **勝者の獲得コイン計算**
         base_multiplier = abs(self.dice_result[winner.id][2])  # 役に応じた倍率
         base_amount_won = self.bet_amount * base_multiplier  # 基本の掛け金倍率計算
 
-        # VIPボーナス適用
-        if is_winner_vip:
-            bonus_multiplier = random.choice([1.05, 1.10])  # 5% または 10% のランダムな倍率
-            amount_won = int(base_amount_won * (1 + bonus_multiplier))  # 勝者の獲得額
-        else:
-            amount_won = base_amount_won  # VIPでなければそのまま
+        bonus_multiplier = random.choice([1.05, 1.10]) if is_winner_vip else 1.0
+        amount_won = int(base_amount_won * bonus_multiplier)
 
-        # **敗者の損失計算**
-        base_loss = self.bet_amount * base_multiplier  # アラシなどの倍率適用
-        if is_loser_vip:
-            loss_reduction = int(base_loss * VIP_LOSS_REDUCTION)  # 10% 還元
-            amount_lost = base_loss - loss_reduction  # VIPなら10%還元後の損失
-        else:
-            amount_lost = base_loss  # VIPでなければそのままの損失
+        base_loss = self.bet_amount * base_multiplier
+        VIP_LOSS_REDUCTION = 0.10  # 10% 還元
+        amount_lost = int(base_loss * (1 - VIP_LOSS_REDUCTION)) if is_loser_vip else base_loss
 
-        # **更新処理**
         if winner.id != self.bot.user.id:
             balances[str(winner.id)] += amount_won
         if loser.id != self.bot.user.id:

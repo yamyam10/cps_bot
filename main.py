@@ -720,12 +720,15 @@ class Dice_vs_Button(ui.View):
         if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
             save_balances(balances, debts)
 
+        winner_name = f"👑 {winner.mention}" if is_winner_vip else winner.mention
+        loser_name = f"👑 {loser.mention}" if is_loser_vip else loser.mention
+
         result_embed = discord.Embed(
             title="対戦結果",
-            description=f"{winner.mention} 勝利！\n"
+            description=f"{winner_name} 勝利！\n"
                         f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{base_multiplier} 倍** で "
                         f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n"
-                        f"{loser.mention} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
+                        f"{loser_name} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
                         f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",
             color=discord.Color.gold()
@@ -793,6 +796,8 @@ async def 所持金ランキング(interaction: discord.Interaction):
     await interaction.response.defer()
 
     balances, debts = load_balances()
+    vip_users = load_vip_users()
+    now = datetime.utcnow()
 
     if not balances:
         await interaction.followup.send("現在、所持金のデータがありません。", ephemeral=True)
@@ -837,6 +842,10 @@ async def 所持金ランキング(interaction: discord.Interaction):
         if debt_amount > 0:
             balance_text += f" (借金: {format(debt_amount, ',')} {CURRENCY})"
 
+        # VIPなら👑をつける
+        if uid in vip_users and vip_users[uid] > now:
+            user_display = f"👑 {user_display}"
+
         rank += 1
 
         if displayed_count < 10:
@@ -846,7 +855,7 @@ async def 所持金ランキング(interaction: discord.Interaction):
                 inline=False
             )
             displayed_count += 1
-        
+
         if uid == user_id:
             user_rank = rank
             user_balance_text = f"総資産: **{format(net_worth, ',')} {CURRENCY}**\n{balance_text}"
@@ -863,7 +872,9 @@ async def 所持金ランキング(interaction: discord.Interaction):
 @bot.tree.command(name="所持金", description="自分の所持金を表示")
 async def 所持金(interaction: discord.Interaction):
     balances, debts = load_balances()
+    vip_users = load_vip_users()
     user_id = str(interaction.user.id)
+    now = datetime.utcnow()
 
     balance = balances.get(user_id, 0)
     debt_amount = debts.get(user_id, 0)
@@ -872,8 +883,11 @@ async def 所持金(interaction: discord.Interaction):
     if debt_amount > 0:
         balance_text += f" (借金: {format(debt_amount, ',')} {CURRENCY})"
 
+    # VIPなら👑をつける
+    user_display = f"👑 {interaction.user.mention}" if user_id in vip_users and vip_users[user_id] > now else interaction.user.mention
+
     embed = discord.Embed(
-        title=f"{interaction.user.mention}の所持金",
+        title=f"{user_display} の所持金",
         description=balance_text,
         color=discord.Color.purple()
     )

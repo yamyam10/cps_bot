@@ -4,7 +4,7 @@ from discord import app_commands, ui, Embed, Color
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 from firebase_admin import credentials, firestore
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 load_dotenv()
 
 #TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
@@ -65,9 +65,9 @@ async def on_ready():
     target_channel = bot.get_channel(target_channel_id)
 
     if target_channel:
-        japan_timezone = pytz.timezone('Asia/Tokyo')
-        now = datetime.datetime.now(japan_timezone)
-        login_message = f"{now.strftime('%Y年%m月%d日')}{now.strftime('%H:%M:%S')} ログインしました"
+        japan_timezone = timezone(timedelta(hours=9))
+        now = datetime.now(japan_timezone)
+        login_message = f"{now.strftime('%Y年%m月%d日 %H:%M:%S')} ログインしました"
         await target_channel.send(login_message)
     else:
         print("指定されたチャンネルが見つかりません。")
@@ -77,8 +77,6 @@ async def on_ready():
         print(f"{len(synced)}個のコマンドを同期しました。")
     except Exception as e:
         print(e)
-
-    check_for_updates.start()
 
 @tasks.loop(seconds=30)
 async def check_for_updates():

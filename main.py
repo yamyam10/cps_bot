@@ -1078,11 +1078,15 @@ async def vip加入(interaction: discord.Interaction):
         return
 
     embed = Embed(
-        title="VIP加入確認",
-        description=f"VIPに加入すると **{format(VIP_COST, ',')} {CURRENCY}** を支払います。\n"
-                    "VIP期間は **1週間** です。\n"
-                    "本当にVIPになりますか？",
-        color=Color.orange()
+        title="VIPメンバーシップ加入確認",
+        description=f"VIPに加入すると、**{format(VIP_COST, ',')} {CURRENCY}** を支払い、特別な特典を受け取ることができます！\n\n"
+                    "**VIP特典一覧**\n"
+                    "**勝利時ボーナス** : 獲得コインが **+5%or10%** アップ！\n"
+                    "**敗北時補償** : 失ったコインの **10%** が戻ってくる！\n"
+                    "**VIPバッジ** : ランキングや結果画面で **👑マーク** が付く！\n\n"
+                    "**VIP期間:** 1週間\n\n"
+                    "本当にVIPに加入しますか？",
+        color=Color.gold()
     )
 
     view = VIPView(user_id)

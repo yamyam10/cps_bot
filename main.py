@@ -995,14 +995,14 @@ class VIPView(ui.View):
     def __init__(self, user_id):
         super().__init__(timeout=30)
         self.user_id = user_id
+        self.message = None  # 送信したメッセージを保存する変数
 
     async def on_timeout(self):
-        """30秒経過したときにキャンセル通知を送信"""
-        try:
-            # インタラクションの応答がすでにされている場合、フォローアップメッセージを送る
-            await self.message.edit(content="30秒経過したためVIP加入をキャンセルしました。", view=None)
-        except discord.HTTPException:
-            pass  # すでにメッセージが削除された場合は無視
+        if self.message:
+            try:
+                await self.message.edit(content="30秒経過したためVIP加入をキャンセルしました。", view=None)
+            except discord.HTTPException:
+                pass  # すでに削除された場合は無視
 
     @ui.button(label="VIPに加入する", style=discord.ButtonStyle.green)
     async def join_vip(self, interaction: discord.Interaction, button: ui.Button):
@@ -1040,35 +1040,13 @@ class VIPView(ui.View):
             color=Color.gold()
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.edit_message(content="VIP加入が完了しました！", embed=embed, view=None)
         self.stop()  # ボタンの無効化
 
     @ui.button(label="キャンセル", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: ui.Button):
-        await interaction.response.send_message("VIP加入をキャンセルしました。", ephemeral=True)
+        await interaction.response.edit_message(content="VIP加入をキャンセルしました。", view=None)
         self.stop()  # ボタンの無効化
-
-@bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
-async def vip加入(interaction: discord.Interaction):
-    user_id = str(interaction.user.id)
-    vip_users = load_vip_users()  # FirestoreからVIPデータを取得
-    now = datetime.utcnow()
-
-    if user_id in vip_users and vip_users[user_id] > now:
-        await interaction.response.send_message("あなたはすでにVIPです！", ephemeral=True)
-        return
-
-    embed = Embed(
-        title="VIP加入確認",
-        description=f"VIPに加入すると **{format(VIP_COST, ',')} {CURRENCY}** を支払います。\n"
-                    "VIP期間は **1週間** です。\n"
-                    "本当にVIPになりますか？",
-        color=Color.orange()
-    )
-
-    view = VIPView(user_id)
-    message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-    view.message = message  # `on_timeout` 用にメッセージを保存
 
 @bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
 async def vip加入(interaction: discord.Interaction):

@@ -478,6 +478,20 @@ def kanji2num(text):
     num += section_total + temp  # 最後の値を加算
     return num
 
+def load_vip_users():
+    vip_users = {}
+    docs = db.collection("vip_users").stream()
+    for doc in docs:
+        data = doc.to_dict()
+        expiry_date = data.get("expiry_date")
+        if expiry_date:
+            vip_users[doc.id] = datetime.fromisoformat(expiry_date)  # ISOフォーマットから日時を取得
+    return vip_users
+
+def save_vip_users(vip_users):
+    for user_id, expiry_date in vip_users.items():
+        db.collection("vip_users").document(user_id).set({"expiry_date": expiry_date.isoformat()})  # ISO形式で保存
+
 class Dice_vs_Button(ui.View):
     def __init__(self, user1, user2, bot):
         super().__init__(timeout=None)
@@ -976,20 +990,6 @@ VIP_DURATION = timedelta(weeks=1)  # VIPの期間（1週間）
 VIP_BONUS_MIN = 0.05  # 勝利時のボーナス最小値（+5%）
 VIP_BONUS_MAX = 0.10  # 勝利時のボーナス最大値（+10%）
 VIP_LOSS_REDUCTION = 0.10  # 敗北時の損失軽減（10%還元）
-
-def load_vip_users():
-    vip_users = {}
-    docs = db.collection("vip_users").stream()
-    for doc in docs:
-        data = doc.to_dict()
-        expiry_date = data.get("expiry_date")
-        if expiry_date:
-            vip_users[doc.id] = datetime.fromisoformat(expiry_date)  # ISOフォーマットから日時を取得
-    return vip_users
-
-def save_vip_users(vip_users):
-    for user_id, expiry_date in vip_users.items():
-        db.collection("vip_users").document(user_id).set({"expiry_date": expiry_date.isoformat()})  # ISO形式で保存
 
 class VIPView(ui.View):
     def __init__(self, user_id):

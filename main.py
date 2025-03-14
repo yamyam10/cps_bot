@@ -710,7 +710,7 @@ class Dice_vs_Button(ui.View):
 
         # VIPボーナス適用
         if is_winner_vip:
-            bonus_multiplier = random.uniform(VIP_BONUS_MIN, VIP_BONUS_MAX)  # 5%〜10%ランダム
+            bonus_multiplier = random.choice([1.05, 1.10])  # 5% または 10% のランダムな倍率
             amount_won = int(base_amount_won * (1 + bonus_multiplier))  # 勝者の獲得額
         else:
             amount_won = base_amount_won  # VIPでなければそのまま

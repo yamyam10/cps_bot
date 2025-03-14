@@ -973,7 +973,7 @@ async def 借金返済(interaction: discord.Interaction, amount: str = ""):
     else:
         await repay_debt(interaction, amount)
 
-VIP_COST = 10_000_000  # VIP加入費用（1000万）
+VIP_COST = 10000000  # VIP加入費用（1000万）
 VIP_DURATION = timedelta(weeks=1)  # VIPの期間（1週間）
 VIP_BONUS_MIN = 0.05  # 勝利時のボーナス最小値（+5%）
 VIP_BONUS_MAX = 0.10  # 勝利時のボーナス最大値（+10%）
@@ -1042,7 +1042,6 @@ async def vip加入(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=VIPView(user_id), ephemeral=True)
 
-
 @bot.tree.command(name="vip期間", description="現在のVIP期間を確認")
 async def vip期間(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
@@ -1063,7 +1062,6 @@ async def vip期間(interaction: discord.Interaction):
     )
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
-
 
 @bot.tree.command(name="vip延長", description="VIPの期間を延長する")
 async def vip延長(interaction: discord.Interaction):

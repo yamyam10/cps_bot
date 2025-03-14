@@ -713,12 +713,13 @@ class Dice_vs_Button(ui.View):
         else:
             amount_won = base_amount_won
 
-        # 敗者の損失計算
+        # 敗者の損失計算 (本来失う額を計算)
+        amount_lost = amount_won  # 本来負けた側が失うべき金額
+
+        # VIPの場合は損失の 10% を還元
         if is_loser_vip:
-            loss_reduction = int(self.bet_amount * VIP_LOSS_REDUCTION)  # 10% 還元
-            amount_lost = self.bet_amount - loss_reduction
-        else:
-            amount_lost = self.bet_amount
+            loss_reduction = int(amount_won * VIP_LOSS_REDUCTION)  # 10% 還元
+            amount_lost -= loss_reduction  # 10% を減算
 
         # 更新処理
         if winner.id != self.bot.user.id:

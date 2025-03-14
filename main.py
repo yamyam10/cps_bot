@@ -558,7 +558,7 @@ class Dice_vs_Button(ui.View):
             return
 
         if self.bet_amount > 0:
-            await interaction.response.send_message(f"すでに掛け金 {self.bet_amount} {CURRENCY} が設定されています。", ephemeral=True)
+            await interaction.response.send_message(f"すでに掛け金 {format(self.bet_amount, ',')} {CURRENCY} が設定されています。", ephemeral=True)
             return
 
         if hasattr(self, "betting_in_progress") and self.betting_in_progress:
@@ -582,14 +582,13 @@ class Dice_vs_Button(ui.View):
             else:
                 bet_amount = int(bet_input)
 
-            # 変換に失敗した場合
             if bet_amount is None or bet_amount <= 0 or bet_amount > balances.get(str(self.user1.id), 0):
                 await interaction.followup.send("無効な掛け金です。所持金の範囲内で正しい数字を入力してください。", ephemeral=True)
                 self.betting_in_progress = False  # 入力失敗時にフラグをリセット
                 return
 
             self.bet_amount = bet_amount
-            await interaction.followup.send(f"掛け金を {self.bet_amount} {CURRENCY} に設定しました！")
+            await interaction.followup.send(f"掛け金を {format(self.bet_amount, ',')} {CURRENCY} に設定しました！")
 
         except ValueError:
             await interaction.followup.send("無効な金額です。数値または漢数字（例: `５万`）を入力してください。", ephemeral=True)

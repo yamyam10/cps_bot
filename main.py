@@ -996,6 +996,14 @@ class VIPView(ui.View):
         super().__init__(timeout=30)
         self.user_id = user_id
 
+    async def on_timeout(self):
+        """30秒経過したときにキャンセル通知を送信"""
+        try:
+            # インタラクションの応答がすでにされている場合、フォローアップメッセージを送る
+            await self.message.edit(content="30秒経過したためVIP加入をキャンセルしました。", view=None)
+        except discord.HTTPException:
+            pass  # すでにメッセージが削除された場合は無視
+
     @ui.button(label="VIPに加入する", style=discord.ButtonStyle.green)
     async def join_vip(self, interaction: discord.Interaction, button: ui.Button):
         user_id = str(interaction.user.id)
@@ -1019,23 +1027,26 @@ class VIPView(ui.View):
         save_balances(balances, debts)  # Firestore に保存
         save_vip_users(vip_users)  # VIP情報も保存
 
+        japan_timezone = timezone(timedelta(hours=9))  # JST (UTC+9)
+        expiry_date_jst = vip_users[user_id].astimezone(japan_timezone)
+
         embed = Embed(
             title="VIP 加入完了！",
             description=f"{interaction.user.mention} は **VIP** になりました！\n"
                         f"**特典**:\n"
                         f"**勝利時** : 獲得コイン +5%～10% ボーナス\n"
                         f"**敗北時** : 10% のコインが戻る\n"
-                        f"**VIP有効期限:** {vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                        f"**VIP有効期限:** {expiry_date_jst.strftime('%Y-%m-%d %H:%M:%S')} JST",
             color=Color.gold()
         )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        self.stop()
+        self.stop()  # ボタンの無効化
 
     @ui.button(label="キャンセル", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_message("VIP加入をキャンセルしました。", ephemeral=True)
-        self.stop()
+        self.stop()  # ボタンの無効化
 
 @bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
 async def vip加入(interaction: discord.Interaction):
@@ -1055,7 +1066,9 @@ async def vip加入(interaction: discord.Interaction):
         color=Color.orange()
     )
 
-    await interaction.response.send_message(embed=embed, view=VIPView(user_id), ephemeral=True)
+    view = VIPView(user_id)
+    message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    view.message = message  # `on_timeout` 用にメッセージを保存
 
 @bot.tree.command(name="vip期間", description="現在のVIP期間を確認")
 async def vip期間(interaction: discord.Interaction):
@@ -1068,12 +1081,14 @@ async def vip期間(interaction: discord.Interaction):
         await interaction.response.send_message("あなたはVIPではありません。", ephemeral=True)
         return
 
-    expiry_date = vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')
     remaining_days = (vip_users[user_id] - now).days
+
+    japan_timezone = timezone(timedelta(hours=9))  # JST (UTC+9)
+    expiry_date_jst = vip_users[user_id].astimezone(japan_timezone)
 
     embed = Embed(
         title="VIPステータス",
-        description=f"**VIP有効期限:** {expiry_date}\n"
+        description=f"**VIP有効期限:** {expiry_date_jst.strftime('%Y-%m-%d %H:%M:%S')}\n"
                     f"**残り日数:** {remaining_days}日",
         color=Color.blue()
     )
@@ -1102,13 +1117,14 @@ async def vip延長(interaction: discord.Interaction):
     save_balances(balances, debts)
     save_vip_users(vip_users)
 
-    expiry_date = vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')
+    japan_timezone = timezone(timedelta(hours=9))  # JST (UTC+9)
+    expiry_date_jst = vip_users[user_id].astimezone(japan_timezone)
 
     embed = Embed(
         title="VIP延長完了",
         description=f"{interaction.user.mention} の VIP 期間が **1週間延長** されました！\n"
-                    f"**新しい有効期限:** {expiry_date}",
-        color=Color.green()
+                    f"**新しい有効期限:** {expiry_date_jst.strftime('%Y-%m-%d %H:%M:%S')}",
+        color=Color.gold()
     )
 
     await interaction.response.send_message(embed=embed, ephemeral=True)

@@ -679,6 +679,9 @@ class Dice_vs_Button(ui.View):
         user1_strength = self.dice_result[self.user1.id][3]
         user2_strength = self.dice_result[self.user2.id][3]
 
+        now = datetime.utcnow()
+        vip_users = load_vip_users()
+
         if user1_strength == user2_strength:
             result_embed = discord.Embed(
                 title="対戦結果",
@@ -697,22 +700,31 @@ class Dice_vs_Button(ui.View):
         winner = self.user1 if user1_strength > user2_strength else self.user2
         loser = self.user2 if winner == self.user1 else self.user1
 
-        # 勝者・敗者の所持金を確保
-        ensure_balance(winner.id)
-        ensure_balance(loser.id)
+        # 勝者・敗者のVIPステータスを確認
+        is_winner_vip = str(winner.id) in vip_users and vip_users[str(winner.id)] > now
+        is_loser_vip = str(loser.id) in vip_users and vip_users[str(loser.id)] > now
 
-        dice_result_winner = list(self.dice_result[winner.id])
-        amount_won = self.bet_amount * abs(self.dice_result[winner.id][2])
+        # 勝者の獲得コイン計算
+        base_amount_won = self.bet_amount * abs(self.dice_result[winner.id][2])
+        
+        if is_winner_vip:
+            bonus_multiplier = random.uniform(VIP_BONUS_MIN, VIP_BONUS_MAX)  # 5%〜10%
+            amount_won = int(base_amount_won * (1 + bonus_multiplier))
+        else:
+            amount_won = base_amount_won
 
-        # 負けた側がヒフミ (1,2,3) だった場合、勝者の獲得額を2倍
-        if self.dice_result[loser.id][0] == [1, 2, 3]:
-            amount_won *= 2
-            dice_result_winner[2] *= 2
+        # 敗者の損失計算
+        if is_loser_vip:
+            loss_reduction = int(self.bet_amount * VIP_LOSS_REDUCTION)  # 10% 還元
+            amount_lost = self.bet_amount - loss_reduction
+        else:
+            amount_lost = self.bet_amount
 
+        # 更新処理
         if winner.id != self.bot.user.id:
             balances[str(winner.id)] += amount_won
         if loser.id != self.bot.user.id:
-            balances[str(loser.id)] -= amount_won
+            balances[str(loser.id)] -= amount_lost
 
         if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
             save_balances(balances, debts)
@@ -720,13 +732,14 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner.mention} 勝利！\n"
-                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の {dice_result_winner[2]} 倍で "
-                        f"{format(amount_won, ',')}{CURRENCY} 獲得\n"
+                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の {self.dice_result[winner.id][2]} 倍で "
+                        f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n"
+                        f"{loser.mention} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
                         f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",
             color=discord.Color.gold()
         )
-        load_balances()
+
         await self.show_bot_dice_result(interaction)
         await interaction.followup.send(embed=result_embed)
 

@@ -1037,7 +1037,7 @@ class VIPView(ui.View):
                         f"**特典**:\n"
                         f"**勝利時** : 獲得コイン +5%～10% ボーナス\n"
                         f"**敗北時** : 10% のコインが戻る\n"
-                        f"**VIP有効期限:** {expiry_date_jst.strftime('%Y-%m-%d %H:%M:%S')} JST",
+                        f"**VIP有効期限:** {expiry_date_jst.strftime('%Y年%m月%d日 %H時%M分')} JST",
             color=Color.gold()
         )
 
@@ -1089,46 +1089,87 @@ async def vip期間(interaction: discord.Interaction):
 
     embed = Embed(
         title="VIPステータス",
-        description=f"**VIP有効期限:** {expiry_date_jst.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        description=f"**VIP有効期限:** {expiry_date_jst.strftime('%Y年%m月%d日 %H時%M分')}\n"
                     f"**残り日数:** {remaining_days}日",
         color=Color.blue()
     )
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+class VIPExtensionView(ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=30)
+        self.user_id = user_id
+        self.interaction = None
+
+    async def on_timeout(self):
+        if self.interaction:
+            try:
+                await self.interaction.followup.send("30秒経過したためVIP延長をキャンセルしました。", ephemeral=True)
+            except discord.HTTPException:
+                pass  # インタラクションが終了していた場合は無視
+
+    @ui.button(label="VIPを延長する", style=discord.ButtonStyle.green)
+    async def extend_vip(self, interaction: discord.Interaction, button: ui.Button):
+        user_id = str(interaction.user.id)
+        now = datetime.utcnow()
+
+        vip_users = load_vip_users()  # Firestore から VIP 情報をロード
+
+        if user_id not in vip_users or vip_users[user_id] < now:
+            await interaction.response.send_message("あなたは現在VIPではありません。先に `/vip加入` してください。", ephemeral=True)
+            return
+
+        balances, debts = load_balances()
+
+        if balances.get(user_id, 0) < VIP_COST:
+            await interaction.response.send_message(f"VIP延長には **{format(VIP_COST, ',')} {CURRENCY}** 必要です。所持金が足りません。", ephemeral=True)
+            return
+
+        balances[user_id] -= VIP_COST
+        vip_users[user_id] += VIP_DURATION
+        save_balances(balances, debts)
+        save_vip_users(vip_users)
+
+        japan_timezone = timezone(timedelta(hours=9))  # JST (UTC+9)
+        expiry_date_jst = vip_users[user_id].astimezone(japan_timezone)
+
+        embed = Embed(
+            title="VIP延長完了",
+            description=f"{interaction.user.mention} の VIP 期間が **1週間延長** されました！\n"
+                        f"**新しい有効期限:** {expiry_date_jst.strftime('%Y年%m月%d日 %H時%M分')} JST",
+            color=Color.gold()
+        )
+
+        await interaction.response.edit_message(content="VIP延長が完了しました！", embed=embed, view=None)
+        self.stop()  # ボタンの無効化
+
+    @ui.button(label="キャンセル", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.edit_message(content="VIP延長をキャンセルしました。", view=None)
+        self.stop()  # ボタンの無効化
+
 @bot.tree.command(name="vip延長", description="VIPの期間を延長する")
 async def vip延長(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
+    vip_users = load_vip_users()  # FirestoreからVIPデータを取得
     now = datetime.utcnow()
-
-    vip_users = load_vip_users()  # Firestore から VIP 情報をロード
 
     if user_id not in vip_users or vip_users[user_id] < now:
         await interaction.response.send_message("あなたは現在VIPではありません。先に `/vip加入` してください。", ephemeral=True)
         return
 
-    balances, debts = load_balances()
-
-    if balances.get(user_id, 0) < VIP_COST:
-        await interaction.response.send_message(f"VIP延長には **{format(VIP_COST, ',')} {CURRENCY}** 必要です。所持金が足りません。", ephemeral=True)
-        return
-
-    balances[user_id] -= VIP_COST
-    vip_users[user_id] += VIP_DURATION
-    save_balances(balances, debts)
-    save_vip_users(vip_users)
-
-    japan_timezone = timezone(timedelta(hours=9))  # JST (UTC+9)
-    expiry_date_jst = vip_users[user_id].astimezone(japan_timezone)
-
     embed = Embed(
-        title="VIP延長完了",
-        description=f"{interaction.user.mention} の VIP 期間が **1週間延長** されました！\n"
-                    f"**新しい有効期限:** {expiry_date_jst.strftime('%Y-%m-%d %H:%M:%S')}",
-        color=Color.gold()
+        title="VIP延長確認",
+        description=f"VIPを延長すると **{format(VIP_COST, ',')} {CURRENCY}** を支払います。\n"
+                    "VIP期間は **1週間延長** されます。\n"
+                    "本当に延長しますか？",
+        color=Color.orange()
     )
 
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    view = VIPExtensionView(user_id)
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    view.interaction = interaction  # インタラクションを保存
 
 @bot.command()
 async def test(ctx):

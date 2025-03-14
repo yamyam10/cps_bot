@@ -995,14 +995,15 @@ class VIPView(ui.View):
     def __init__(self, user_id):
         super().__init__(timeout=30)
         self.user_id = user_id
-        self.message = None  # 送信したメッセージを保存する変数
+        self.interaction = None  # インタラクションを保存するための変数
 
     async def on_timeout(self):
-        if self.message:
+        """30秒経過したらキャンセルメッセージを送る"""
+        if self.interaction:
             try:
-                await self.message.edit(content="30秒経過したためVIP加入をキャンセルしました。", view=None)
+                await self.interaction.followup.send("30秒経過したためVIP加入をキャンセルしました。", ephemeral=True)
             except discord.HTTPException:
-                pass  # すでに削除された場合は無視
+                pass  # インタラクションがすでに終了していた場合は無視
 
     @ui.button(label="VIPに加入する", style=discord.ButtonStyle.green)
     async def join_vip(self, interaction: discord.Interaction, button: ui.Button):
@@ -1067,8 +1068,8 @@ async def vip加入(interaction: discord.Interaction):
     )
 
     view = VIPView(user_id)
-    message = await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-    view.message = message  # `on_timeout` 用にメッセージを保存
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    view.interaction = interaction  # インタラクションを保存
 
 @bot.tree.command(name="vip期間", description="現在のVIP期間を確認")
 async def vip期間(interaction: discord.Interaction):

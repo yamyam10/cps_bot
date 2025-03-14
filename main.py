@@ -979,7 +979,19 @@ VIP_BONUS_MIN = 0.05  # 勝利時のボーナス最小値（+5%）
 VIP_BONUS_MAX = 0.10  # 勝利時のボーナス最大値（+10%）
 VIP_LOSS_REDUCTION = 0.10  # 敗北時の損失軽減（10%還元）
 
-vip_users = {}
+def load_vip_users():
+    vip_users = {}
+    docs = db.collection("vip_users").stream()
+    for doc in docs:
+        data = doc.to_dict()
+        expiry_date = data.get("expiry_date")
+        if expiry_date:
+            vip_users[doc.id] = datetime.fromisoformat(expiry_date)  # ISOフォーマットから日時を取得
+    return vip_users
+
+def save_vip_users(vip_users):
+    for user_id, expiry_date in vip_users.items():
+        db.collection("vip_users").document(user_id).set({"expiry_date": expiry_date.isoformat()})  # ISO形式で保存
 
 class VIPView(ui.View):
     def __init__(self, user_id):
@@ -991,6 +1003,8 @@ class VIPView(ui.View):
         user_id = str(interaction.user.id)
         now = datetime.utcnow()
 
+        vip_users = load_vip_users()  # Firestore から VIP 情報をロード
+
         if user_id in vip_users and vip_users[user_id] > now:
             await interaction.response.send_message("あなたはすでにVIPです！", ephemeral=True)
             return
@@ -1001,18 +1015,19 @@ class VIPView(ui.View):
             await interaction.response.send_message(f"VIP加入には **{format(VIP_COST, ',')} {CURRENCY}** 必要です。所持金が足りません。", ephemeral=True)
             return
 
-        # 所持金からVIP料金を引く
+        # VIP料金を差し引く
         balances[user_id] -= VIP_COST
-        vip_users[user_id] = now + VIP_DURATION  # VIP期間を1週間後に設定
-        save_balances(balances, debts)  # Firestore に保存する場合
+        vip_users[user_id] = now + VIP_DURATION  # VIP期間を1週間に設定
+        save_balances(balances, debts)  # Firestore に保存
+        save_vip_users(vip_users)  # VIP情報も保存
 
         embed = Embed(
-            title="🎉 VIP 加入完了！ 🎉",
+            title="VIP 加入完了！",
             description=f"{interaction.user.mention} は **VIP** になりました！\n"
-                        f"🏆 **特典**:\n"
-                        f"✅ **勝利時** : 獲得コイン +5%～10% ボーナス\n"
-                        f"✅ **敗北時** : 10% のコインが戻る\n"
-                        f"📅 **VIP有効期限:** {vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                        f"**特典**:\n"
+                        f"**勝利時** : 獲得コイン +5%～10% ボーナス\n"
+                        f"**敗北時** : 10% のコインが戻る\n"
+                        f"**VIP有効期限:** {vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')}",
             color=Color.gold()
         )
 
@@ -1027,8 +1042,10 @@ class VIPView(ui.View):
 @bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
 async def vip加入(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
+    vip_users = load_vip_users()  # FirestoreからVIPデータを取得
+    now = datetime.utcnow()
 
-    if user_id in vip_users and vip_users[user_id] > datetime.utcnow():
+    if user_id in vip_users and vip_users[user_id] > now:
         await interaction.response.send_message("あなたはすでにVIPです！", ephemeral=True)
         return
 
@@ -1046,6 +1063,8 @@ async def vip加入(interaction: discord.Interaction):
 async def vip期間(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     now = datetime.utcnow()
+
+    vip_users = load_vip_users()
 
     if user_id not in vip_users or vip_users[user_id] < now:
         await interaction.response.send_message("あなたはVIPではありません。", ephemeral=True)
@@ -1068,6 +1087,8 @@ async def vip延長(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     now = datetime.utcnow()
 
+    vip_users = load_vip_users()  # Firestore から VIP 情報をロード
+
     if user_id not in vip_users or vip_users[user_id] < now:
         await interaction.response.send_message("あなたは現在VIPではありません。先に `/vip加入` してください。", ephemeral=True)
         return
@@ -1078,10 +1099,10 @@ async def vip延長(interaction: discord.Interaction):
         await interaction.response.send_message(f"VIP延長には **{format(VIP_COST, ',')} {CURRENCY}** 必要です。所持金が足りません。", ephemeral=True)
         return
 
-    # 所持金からVIP延長料金を引く
     balances[user_id] -= VIP_COST
-    vip_users[user_id] += VIP_DURATION  # 期間を1週間延長
-    save_balances(balances, debts)  # Firestore に保存する場合
+    vip_users[user_id] += VIP_DURATION
+    save_balances(balances, debts)
+    save_vip_users(vip_users)
 
     expiry_date = vip_users[user_id].strftime('%Y-%m-%d %H:%M:%S UTC')
 

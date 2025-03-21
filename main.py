@@ -1193,6 +1193,8 @@ class VIPView(ui.View):
 
 @bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
 async def vip加入(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
     user_id = str(interaction.user.id)
     vip_users = load_vip_users()  # FirestoreからVIPデータを取得
     now = datetime.utcnow()

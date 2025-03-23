@@ -535,7 +535,7 @@ def get_vs_result(dice):
     elif dice == [4, 5, 6]:
         return ("シゴロ", 2)
     elif dice == [1, 2, 3]:
-        return ("ヒフミ", -2)
+        return ("ヒフミ", 2)
     elif dice[0] == dice[1] or dice[1] == dice[2]:
         unique = set(dice)
         unique.remove(dice[1])

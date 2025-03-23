@@ -535,7 +535,7 @@ def get_vs_result(dice):
     elif dice == [4, 5, 6]:
         return ("シゴロ", 2)
     elif dice == [1, 2, 3]:
-        return ("ヒフミ", 2)
+        return ("ヒフミ", -2)
     elif dice[0] == dice[1] or dice[1] == dice[2]:
         unique = set(dice)
         unique.remove(dice[1])
@@ -826,13 +826,18 @@ class Dice_vs_Button(ui.View):
         is_winner_vip = str(winner.id) in vip_users and vip_users[str(winner.id)] > now
         is_loser_vip = str(loser.id) in vip_users and vip_users[str(loser.id)] > now
 
-        base_multiplier = abs(self.dice_result[winner.id][2])  # 役に応じた倍率
-        base_amount_won = self.bet_amount * base_multiplier  # 基本の掛け金倍率計算
+        winner_multiplier = self.dice_result[winner.id][2]
+        loser_multiplier = self.dice_result[loser.id][2]
+
+        base_amount_won = self.bet_amount * abs(winner_multiplier)
+
+        if loser_multiplier == -2:
+            base_loss = self.bet_amount * abs(winner_multiplier) * 2
+        else:
+            base_loss = self.bet_amount * abs(winner_multiplier)
 
         bonus_multiplier = random.choice([1.05, 1.10]) if is_winner_vip else 1.0
         amount_won = int(base_amount_won * bonus_multiplier)
-
-        base_loss = self.bet_amount * base_multiplier
         VIP_LOSS_REDUCTION = 0.10  # 10% 還元
         amount_lost = int(base_loss * (1 - VIP_LOSS_REDUCTION)) if is_loser_vip else base_loss
 
@@ -850,7 +855,7 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner_name} 勝利！\n"
-                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{base_multiplier} 倍** で "
+                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{abs(winner_multiplier)} 倍** で "
                         f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n"
                         f"{loser_name} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"

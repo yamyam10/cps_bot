@@ -829,15 +829,16 @@ class Dice_vs_Button(ui.View):
         winner_multiplier = self.dice_result[winner.id][2]
         loser_multiplier = self.dice_result[loser.id][2]
 
-        base_amount_won = self.bet_amount * abs(winner_multiplier)
-
         if loser_multiplier == -2:
-            base_loss = self.bet_amount * abs(winner_multiplier) * 2
+            adjusted_multiplier = abs(winner_multiplier) * 2
         else:
-            base_loss = self.bet_amount * abs(winner_multiplier)
+            adjusted_multiplier = abs(winner_multiplier)
 
+        base_amount_won = self.bet_amount * adjusted_multiplier
         bonus_multiplier = random.choice([1.05, 1.10]) if is_winner_vip else 1.0
         amount_won = int(base_amount_won * bonus_multiplier)
+
+        base_loss = self.bet_amount * adjusted_multiplier
         VIP_LOSS_REDUCTION = 0.10  # 10% 還元
         amount_lost = int(base_loss * (1 - VIP_LOSS_REDUCTION)) if is_loser_vip else base_loss
 
@@ -855,7 +856,7 @@ class Dice_vs_Button(ui.View):
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner_name} 勝利！\n"
-                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{abs(winner_multiplier)} 倍** で "
+                        f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{adjusted_multiplier} 倍** で "
                         f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n"
                         f"{loser_name} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"

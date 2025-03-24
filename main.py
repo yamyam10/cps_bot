@@ -855,7 +855,7 @@ class Dice_vs_Button(ui.View):
 
         if is_winner_vip:
             increase_percent = int((bonus_multiplier - 1) * 100)
-            bonus_detail = f"\n（VIPボーナス{increase_percent}% で {format(base_amount_won, ',')} → {format(amount_won, ',')}）"
+            bonus_detail = f"\n（VIPボーナス{increase_percent}% で {format(base_amount_won, ',')}{CURRENCY} → {format(amount_won, ',')}{CURRENCY}）"
         else:
             bonus_detail = ""
 

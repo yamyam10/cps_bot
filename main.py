@@ -853,16 +853,23 @@ class Dice_vs_Button(ui.View):
         winner_name = f"👑 {winner.mention}" if is_winner_vip else winner.mention
         loser_name = f"👑 {loser.mention}" if is_loser_vip else loser.mention
 
+        if is_winner_vip:
+            increase_percent = int((bonus_multiplier - 1) * 100)
+            bonus_detail = f"（{increase_percent}% ボーナスで {format(base_amount_won, ',')} → {format(amount_won, ',')}）"
+        else:
+            bonus_detail = ""
+
         result_embed = discord.Embed(
             title="対戦結果",
             description=f"{winner_name} 勝利！\n"
                         f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{adjusted_multiplier} 倍** で "
-                        f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n"
+                        f"**{format(amount_won, ',')}{CURRENCY} 獲得** {bonus_detail}\n"
                         f"{loser_name} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
                         f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",
             color=discord.Color.gold()
         )
+
 
         await self.show_bot_dice_result(interaction)
         await interaction.followup.send(embed=result_embed)

@@ -863,7 +863,7 @@ class Dice_vs_Button(ui.View):
             title="対戦結果",
             description=f"{winner_name} 勝利！\n"
                         f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{adjusted_multiplier} 倍** で "
-                        f"**{format(amount_won, ',')}{CURRENCY} 獲得** {bonus_detail}\n"
+                        f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n {bonus_detail}\n"
                         f"{loser_name} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
                         f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",

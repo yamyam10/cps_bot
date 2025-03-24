@@ -855,7 +855,7 @@ class Dice_vs_Button(ui.View):
 
         if is_winner_vip:
             increase_percent = int((bonus_multiplier - 1) * 100)
-            bonus_detail = f"（VIPボーナス{increase_percent}% で {format(base_amount_won, ',')} → {format(amount_won, ',')}）"
+            bonus_detail = f"\n（VIPボーナス{increase_percent}% で {format(base_amount_won, ',')} → {format(amount_won, ',')}）"
         else:
             bonus_detail = ""
 
@@ -863,7 +863,7 @@ class Dice_vs_Button(ui.View):
             title="対戦結果",
             description=f"{winner_name} 勝利！\n"
                         f"掛け金 {format(self.bet_amount, ',')}{CURRENCY} の **{adjusted_multiplier} 倍** で "
-                        f"**{format(amount_won, ',')}{CURRENCY} 獲得**\n {bonus_detail}\n"
+                        f"**{format(amount_won, ',')}{CURRENCY} 獲得** {bonus_detail}\n"
                         f"{loser_name} は **{format(amount_lost, ',')}{CURRENCY} 失いました**\n"
                         f"{self.user1.mention} の所持金: {format(balances.get(str(self.user1.id), 0), ',')}{CURRENCY}\n"
                         f"{self.user2.mention} の所持金: {format(balances.get(str(self.user2.id), 0), ',')}{CURRENCY}",

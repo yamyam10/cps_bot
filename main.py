@@ -768,7 +768,7 @@ class Dice_vs_Button(ui.View):
         # else:
         #     dice = [1, 1, 1]
 
-        if str(user_id) in manual_dice_rolls and self.roll_attempts[user_id] == 0:
+        if str(user_id) in manual_dice_rolls and self.roll_attempts.get(user_id, 0) == 0:
             dice = manual_dice_rolls.pop(str(user_id))
         else:
             dice = [random.randint(1, 6) for _ in range(3)]
@@ -1361,7 +1361,6 @@ async def 出目設定(ctx, *, dice_input: str):
 @bot.command(name="BOT出目設定")
 async def BOT出目設定(ctx, *, dice_input: str):
     admin_ids = ["513153492165197835", "1075092388835512330"]
-
     if str(ctx.author.id) not in admin_ids:
         await ctx.send("このコマンドは管理者のみ使用できます。", ephemeral=True)
         return
@@ -1372,12 +1371,10 @@ async def BOT出目設定(ctx, *, dice_input: str):
             raise ValueError
 
         manual_dice_rolls[str(bot.user.id)] = dice
-        print(f"BOT出目設定: {bot.user.id} -> {dice}")
-
         await ctx.send(f"BOTの出目を {dice} に設定しました！", ephemeral=True)
 
     except ValueError:
-        await ctx.send("正しい形式で入力してください！ 例: `!BOT出目設定 2,3,6`", ephemeral=True)
+        await ctx.send("正しい形式で入力してください！ 例: `!BOT出目設定 1,2,3`", ephemeral=True)
 
 @bot.command(name="出目確認")
 async def 出目確認(ctx):

@@ -634,21 +634,25 @@ class Dice_vs_Button(ui.View):
         max_attempts = 3  # 最大3回まで振れる
         attempts = 0
 
-        while attempts < max_attempts:
-            dice = [random.randint(1, 6) for _ in range(3)]
+        if str(self.bot.user.id) in manual_dice_rolls:
+            dice = manual_dice_rolls.pop(str(self.bot.user.id))
             result_message, multiplier = get_vs_result(dice)
             strength = get_strength(dice)
-
             self.dice_result[self.bot.user.id] = (dice, result_message, multiplier, strength)
+        else:
+            while attempts < max_attempts:
+                dice = [random.randint(1, 6) for _ in range(3)]
+                result_message, multiplier = get_vs_result(dice)
+                strength = get_strength(dice)
 
-            # 目なしなら振り直し
-            if result_message == "目なし":
-                attempts += 1
-                if attempts < max_attempts:
-                    continue  # もう一度振る
-            break  # 目なしでない or 3回振り終えたら終了
+                self.dice_result[self.bot.user.id] = (dice, result_message, multiplier, strength)
 
-        # **親の役が確定するまでBotの結果を表示しない**
+                if result_message == "目なし":
+                    attempts += 1
+                    if attempts < max_attempts:
+                        continue
+                break  # 目なしでない or 3回振り終えたら終了
+
         if self.user1.id not in self.dice_result:
             return
 
@@ -768,7 +772,7 @@ class Dice_vs_Button(ui.View):
         # else:
         #     dice = [1, 1, 1]
 
-        if str(user_id) in manual_dice_rolls and self.roll_attempts.get(user_id, 0) == 0:
+        if str(user_id) in manual_dice_rolls and self.roll_attempts[user_id] == 0:
             dice = manual_dice_rolls.pop(str(user_id))
         else:
             dice = [random.randint(1, 6) for _ in range(3)]

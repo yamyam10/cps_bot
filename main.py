@@ -1358,6 +1358,27 @@ async def 出目設定(ctx, *, dice_input: str):
     except ValueError:
         await ctx.send("正しい形式で入力してください！ 例: `!出目設定 1,1,1`", ephemeral=True)
 
+@bot.command(name="BOT出目設定")
+async def BOT出目設定(ctx, *, dice_input: str):
+    admin_ids = ["513153492165197835", "1075092388835512330"]
+
+    if str(ctx.author.id) not in admin_ids:
+        await ctx.send("このコマンドは管理者のみ使用できます。", ephemeral=True)
+        return
+
+    try:
+        dice = [int(num) for num in dice_input.split(",")]
+        if len(dice) != 3 or any(d < 1 or d > 6 for d in dice):
+            raise ValueError
+
+        manual_dice_rolls[str(bot.user.id)] = dice
+        print(f"BOT出目設定: {bot.user.id} -> {dice}")
+
+        await ctx.send(f"BOTの出目を {dice} に設定しました！", ephemeral=True)
+
+    except ValueError:
+        await ctx.send("正しい形式で入力してください！ 例: `!BOT出目設定 2,3,6`", ephemeral=True)
+
 @bot.command(name="出目確認")
 async def 出目確認(ctx):
     if not manual_dice_rolls:

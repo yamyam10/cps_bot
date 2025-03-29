@@ -1210,15 +1210,15 @@ class VIPView(ui.View):
 
 @bot.tree.command(name="vip加入", description="VIPに加入するための確認画面を表示")
 async def vip加入(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-
     user_id = str(interaction.user.id)
-    vip_users = load_vip_users()  # FirestoreからVIPデータを取得
+    vip_users = load_vip_users()
     now = datetime.utcnow()
 
     if user_id in vip_users and vip_users[user_id] > now:
         await interaction.response.send_message("あなたはすでにVIPです！", ephemeral=True)
         return
+
+    await interaction.response.defer(ephemeral=True)
 
     embed = Embed(
         title="VIPメンバーシップ加入確認",
@@ -1233,8 +1233,8 @@ async def vip加入(interaction: discord.Interaction):
     )
 
     view = VIPView(user_id)
-    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-    view.interaction = interaction  # インタラクションを保存
+    view.interaction = interaction
+    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
 @bot.tree.command(name="vip期間", description="現在のVIP期間を確認")
 async def vip期間(interaction: discord.Interaction):

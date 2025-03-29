@@ -850,6 +850,8 @@ class Dice_vs_Button(ui.View):
             balances[str(winner.id)] += amount_won
         if loser.id != self.bot.user.id:
             balances[str(loser.id)] -= amount_lost
+        if winner.id == self.bot.user.id:
+            balances[str(self.bot.user.id)] += amount_won
 
         if winner.id != self.bot.user.id or loser.id != self.bot.user.id:
             save_balances(balances, debts)

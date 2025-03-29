@@ -1053,7 +1053,12 @@ async def 借金(interaction: discord.Interaction, amount: str):
 
     ensure_balance(user_id)
 
+    vip_users = load_vip_users()
+    now = datetime.utcnow()
     max_allowed_loan = 50000
+    if str(user_id) in vip_users and vip_users[str(user_id)] > now:
+        max_allowed_loan = 10000000
+
     if user_id not in admin_ids and amount > max_allowed_loan:
         await interaction.followup.send(f"1回の借金は最大 {format(max_allowed_loan, ',')} {CURRENCY} までです。", ephemeral=True)
         return

@@ -1502,8 +1502,8 @@ class HeroRoulette(commands.Cog):
             {"id": 86, "name": "みりぽゆ", "color": 0xff68c8, "type": "オリジナル", "role": "ガンナー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734228602981/65E81500-A051-4523-8E40-5E83B7097946.jpg"},
             {"id": 87, "name": "ゴン=フリークス", "color": 0x49c334, "type": "コラボ", "role": "アタッカー", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734463746241/2E660FE9-0E9B-450B-B5AA-A345364BD67E.jpg"},
             {"id": 88, "name": "キルア=ゾルディック", "color": 0xac85bc, "type": "コラボ", "role": "スプリンター", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1332202734719336499/E669E432-110C-49B6-A7AF-27EBBA049949.jpg"},
-            {"id": 89, "name": "チーちゃん", "color": 0xd8ef3c, "type": "オリジナル", "role": "スプリンター", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1344942868510543894/7BEC30AF-6F7E-4ABB-AA35-4CA532E3E283.jpg"}
-
+            {"id": 89, "name": "チーちゃん", "color": 0xd8ef3c, "type": "オリジナル", "role": "スプリンター", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1344942868510543894/7BEC30AF-6F7E-4ABB-AA35-4CA532E3E283.jpg"},
+            {"id": 90, "name": "上条 当麻", "color": 0x71d3ff, "type": "コラボ", "role": "スプリンター", "img": "https://cdn.discordapp.com/attachments/1077032367719469117/1368116184741970011/image0.jpg"}
          ]
         self.reset_settings()
 

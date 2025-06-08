@@ -1121,6 +1121,154 @@ async def おかねほちぃねん(interaction: discord.Interaction):
     view = MoneyRequest(interaction.user)
     await interaction.response.send_message("画像を送るにはボタンをクリックしてください！", view=view, ephemeral=True)
 
+
+from collections import defaultdict, deque
+
+# サーバーごとの再生キュー（deque = 高速なキュー）
+music_queues = defaultdict(deque)
+
+@bot.tree.command(name="songs", description="再生できる曲の一覧を表示します。")
+async def songs(interaction: discord.Interaction):
+    music_dir = "./music"
+    files = sorted([f[:-4] for f in os.listdir(music_dir) if f.endswith(".mp3")])
+    if not files:
+        await interaction.response.send_message("再生可能な曲が見つかりません。")
+        return
+    msg = "🎶 **再生できる曲一覧**\n" + "\n".join(f"{i+1}. `{f}`" for i, f in enumerate(files))
+    await interaction.response.send_message(msg)
+
+@bot.tree.command(name="play", description="番号で曲をキューに追加して再生します。")
+@app_commands.describe(index="再生したい曲の番号（/songsで確認）")
+async def play(interaction: discord.Interaction, index: int):
+    guild_id = interaction.guild.id
+    music_dir = "./music"
+    files = sorted([f for f in os.listdir(music_dir) if f.endswith(".mp3")])
+
+    if index < 1 or index > len(files):
+        await interaction.response.send_message("❌ 無効な番号です。`/songs` で確認してください。", ephemeral=True)
+        return
+
+    filename = files[index - 1]
+    filepath = os.path.join(music_dir, filename)
+
+    # キューに追加
+    music_queues[guild_id].append(filepath)
+    await interaction.response.send_message(f"🎶 `{filename[:-4]}` をキューに追加しました。")
+
+    # 再生中でなければ開始
+    vc = interaction.guild.voice_client
+    if vc is None or not vc.is_connected():
+        if interaction.user.voice is None or interaction.user.voice.channel is None:
+            await interaction.followup.send("❗️先にボイスチャンネルに参加してください。", ephemeral=True)
+            return
+        vc = await interaction.user.voice.channel.connect()
+
+    if not vc.is_playing():
+        play_next(interaction.guild, vc)
+
+def play_next(guild, vc):
+    queue = music_queues[guild.id]
+    if not queue:
+        coro = vc.disconnect()
+        fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+        fut.add_done_callback(lambda _: print(f"{guild.name} から切断しました"))
+        return
+
+    filepath = queue.popleft()
+    vc.play(discord.FFmpegPCMAudio(filepath), after=lambda e: play_next(guild, vc))
+
+def disconnect_if_empty(guild, vc):
+    coro = vc.disconnect()
+    fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+    fut.add_done_callback(lambda _: print(f"{guild.name}（1曲ランダム）から切断しました"))
+
+@bot.tree.command(name="queue", description="現在の再生キューを表示します。")
+async def queue(interaction: discord.Interaction):
+    queue = music_queues[interaction.guild.id]
+    if not queue:
+        await interaction.response.send_message("🎵 キューは空です。")
+        return
+    msg = "**現在の再生キュー：**\n" + "\n".join(f"{i+1}. `{os.path.basename(path)[:-4]}`" for i, path in enumerate(queue))
+    await interaction.response.send_message(msg)
+
+@bot.tree.command(name="playall", description="全曲をキューに追加して再生します。")
+async def playall(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    music_dir = "./music"
+    files = sorted([f for f in os.listdir(music_dir) if f.endswith(".mp3")])
+    if not files:
+        await interaction.response.send_message("❌ 曲が見つかりません。")
+        return
+
+    for f in files:
+        music_queues[guild_id].append(os.path.join(music_dir, f))
+
+    await interaction.response.send_message("📜 全曲をキューに追加しました。")
+
+    vc = interaction.guild.voice_client
+    if vc is None or not vc.is_connected():
+        if interaction.user.voice and interaction.user.voice.channel:
+            vc = await interaction.user.voice.channel.connect()
+        else:
+            await interaction.followup.send("❗️ボイスチャンネルに参加してください。", ephemeral=True)
+            return
+
+    if not vc.is_playing():
+        play_next(interaction.guild, vc)
+
+@bot.tree.command(name="playrandom", description="ランダムな1曲を再生します。")
+async def playrandom(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    music_dir = "./music"
+    files = [f for f in os.listdir(music_dir) if f.endswith(".mp3")]
+    if not files:
+        await interaction.response.send_message("❌ 曲が見つかりません。")
+        return
+
+    choice = random.choice(files)
+    filepath = os.path.join(music_dir, choice)
+
+    vc = interaction.guild.voice_client
+    if vc is None or not vc.is_connected():
+        if interaction.user.voice and interaction.user.voice.channel:
+            vc = await interaction.user.voice.channel.connect()
+        else:
+            await interaction.response.send_message("❗️ボイスチャンネルに参加してください。", ephemeral=True)
+            return
+
+    if vc.is_playing():
+        vc.stop()
+
+    vc.play(discord.FFmpegPCMAudio(filepath), after=lambda e: disconnect_if_empty(interaction.guild, vc))
+    await interaction.response.send_message(f"🎲 ランダムに `{choice[:-4]}` を再生します。")
+
+@bot.tree.command(name="shuffleplay", description="全曲をランダム順に再生します。")
+async def shuffleplay(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    music_dir = "./music"
+    files = [f for f in os.listdir(music_dir) if f.endswith(".mp3")]
+    if not files:
+        await interaction.response.send_message("❌ 曲が見つかりません。")
+        return
+
+    random.shuffle(files)
+    for f in files:
+        music_queues[guild_id].append(os.path.join(music_dir, f))
+
+    await interaction.response.send_message("🔀 全曲をランダム順にキューに追加しました。")
+
+    vc = interaction.guild.voice_client
+    if vc is None or not vc.is_connected():
+        if interaction.user.voice and interaction.user.voice.channel:
+            vc = await interaction.user.voice.channel.connect()
+        else:
+            await interaction.followup.send("❗️ボイスチャンネルに参加してください。", ephemeral=True)
+            return
+
+    if not vc.is_playing():
+        play_next(interaction.guild, vc)
+
+
 @bot.command()
 async def test(ctx):
     embed = discord.Embed(title="正常に動作しています。", color=discord.Colour.purple())

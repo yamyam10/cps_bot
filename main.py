@@ -7,7 +7,7 @@ from firebase_admin import credentials, firestore
 from datetime import datetime, timezone, timedelta
 load_dotenv()
 
-#TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+# TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
@@ -77,6 +77,10 @@ async def on_ready():
         print(f"{len(synced)}個のコマンドを同期しました。")
     except Exception as e:
         print(e)
+
+    if not check_for_updates.is_running():
+        check_for_updates.start()
+        print("スプレッドシート監視ループを開始しました")
 
 @tasks.loop(seconds=30)
 async def check_for_updates():

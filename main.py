@@ -13,8 +13,8 @@ load_dotenv()
 from data.heroes import heroes
 from cogs.stage import get_file_stage
 
-# TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+# TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')

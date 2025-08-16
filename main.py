@@ -5,6 +5,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 from firebase_admin import credentials, firestore
 from datetime import datetime, timezone, timedelta
+import threading
+from flask import Flask
 load_dotenv()
 
 # TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
@@ -1729,5 +1731,20 @@ async def on_message_delete(message):
 #             import traceback
 #             traceback.print_exc()
 #             await message.channel.send("エラーが発生しました。")
+
+# --- FlaskでダミーWebサーバーを立ち上げる ---
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
+# 別スレッドでFlaskを実行
+threading.Thread(target=run_web).start()
+
 
 bot.run(TOKEN)

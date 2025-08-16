@@ -9,11 +9,12 @@ import threading
 from flask import Flask
 load_dotenv()
 
-# 別ファイルでヒーローリストを管理
+# 別ファイルで管理
 from data.heroes import heroes
+from cogs.stage import get_file_stage
 
-TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-# TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+# TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')
@@ -348,69 +349,10 @@ async def 公平チーム分け(interaction: discord.Interaction, role: discord.
 
     await interaction.followup.send("\n\n".join(messages))
 
-@bot.tree.command(name="ステージ", description="ランダムでステージを表示")
-async def ステージ(interaction: discord.Interaction):
-    stage = random.randint(0, 18)  # 0~18
-    if stage == 0:  # 0が出たとき
-        stageimg = "stage1.jpg"
-        file = discord.File(fp="stage/stage1.jpg", filename=stageimg, spoiler=False)
-    elif stage == 1:
-        stageimg = "stage2.jpg"
-        file = discord.File(fp="stage/stage2.jpg", filename=stageimg, spoiler=False)
-    elif stage == 2:
-        stageimg = "stage3.jpg"
-        file = discord.File(fp="stage/stage3.jpg", filename=stageimg, spoiler=False)
-    elif stage == 3:
-        stageimg = "stage4.jpg"
-        file = discord.File(fp="stage/stage4.jpg", filename=stageimg, spoiler=False)
-    elif stage == 4:
-        stageimg = "stage5.jpg"
-        file = discord.File(fp="stage/stage5.jpg", filename=stageimg, spoiler=False)
-    elif stage == 5:
-        stageimg = "stage6.jpg"
-        file = discord.File(fp="stage/stage6.jpg", filename=stageimg, spoiler=False)
-    elif stage == 6:
-        stageimg = "stage7.jpg"
-        file = discord.File(fp="stage/stage7.jpg", filename=stageimg, spoiler=False)
-    elif stage == 7:
-        stageimg = "stage8.jpg"
-        file = discord.File(fp="stage/stage8.jpg", filename=stageimg, spoiler=False)
-    elif stage == 8:
-        stageimg = "stage9.jpg"
-        file = discord.File(fp="stage/stage9.jpg", filename=stageimg, spoiler=False)
-    elif stage == 9:
-        stageimg = "stage10.jpg"
-        file = discord.File(fp="stage/stage10.jpg", filename=stageimg, spoiler=False)
-    elif stage == 10:
-        stageimg = "stage11.jpg"
-        file = discord.File(fp="stage/stage11.jpg", filename=stageimg, spoiler=False)
-    elif stage == 11:
-        stageimg = "stage12.jpg"
-        file = discord.File(fp="stage/stage12.jpg", filename=stageimg, spoiler=False)
-    elif stage == 12:
-        stageimg = "stage13.jpg"
-        file = discord.File(fp="stage/stage13.jpg", filename=stageimg, spoiler=False)
-    elif stage == 13:
-        stageimg = "stage14.jpg"
-        file = discord.File(fp="stage/stage14.jpg", filename=stageimg, spoiler=False)
-    elif stage == 14:
-        stageimg = "stage15.jpg"
-        file = discord.File(fp="stage/stage15.jpg", filename=stageimg, spoiler=False)
-    elif stage == 15:
-        stageimg = "stage16.jpg"
-        file = discord.File(fp="stage/stage16.jpg", filename=stageimg, spoiler=False)
-    elif stage == 16:
-        stageimg = "stage17.jpg"
-        file = discord.File(fp="stage/stage17.jpg", filename=stageimg, spoiler=False)
-    elif stage == 17:
-        stageimg = "stage18.jpg"
-        file = discord.File(fp="stage/stage18.jpg", filename=stageimg, spoiler=False)
-    elif stage == 18:
-        stageimg = "stage19.jpg"
-        file = discord.File(fp="stage/stage19.jpg", filename=stageimg, spoiler=False)
-    else:  # それ以外なのでERRORが出た時に処理される
-        print("sutageエラー")
-    await interaction.response.send_message(file=file)
+@bot.tree.command(name="ステージ",description="ランダムでステージを表示")
+async def ステージ(interacion: discord.Interaction):
+    file = get_file_stage()
+    await interacion.response.send_message(file=file)
 
 @bot.tree.command(name="ロール削除", description="全てのチームロールを一括で削除")
 async def ロール削除(interaction: discord.Interaction):

@@ -12,5 +12,5 @@ oauth2client
 yt-dlp
 PyNaCl
 firebase-admin
-uvicorn==0.29.0
-fastapi==0.110.1
+fastapi
+uvicorn

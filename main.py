@@ -13,9 +13,13 @@ load_dotenv()
 from data.heroes import heroes
 from cogs.stage import get_file_stage
 from cogs.omikuji import draw_omikuji
+from server import server_thread
 
-TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-# TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+# TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+
+# Koyeb用 サーバー立ち上げ
+server_thread()
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')
@@ -1441,20 +1445,5 @@ async def on_message_delete(message):
 #             import traceback
 #             traceback.print_exc()
 #             await message.channel.send("エラーが発生しました。")
-
-# --- FlaskでダミーWebサーバーを立ち上げる ---
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot is running!"
-
-def run_web():
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-
-# 別スレッドでFlaskを実行
-threading.Thread(target=run_web).start()
-
 
 bot.run(TOKEN)

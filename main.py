@@ -16,9 +16,6 @@ from server import server_thread
 # TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 
-# Koyeb用 サーバー立ち上げ
-server_thread()
-
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')
 CHANNEL_ID = int(os.getenv('channel_id_spreadsheet'))
@@ -1443,5 +1440,8 @@ async def on_message_delete(message):
 #             import traceback
 #             traceback.print_exc()
 #             await message.channel.send("エラーが発生しました。")
+
+# Koyeb用 サーバー立ち上げ
+server_thread()
 
 bot.run(TOKEN)

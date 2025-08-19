@@ -12,6 +12,7 @@ load_dotenv()
 # 別ファイルで管理
 from data.heroes import heroes
 from cogs.stage import get_file_stage
+from cogs.omikuji import draw_omikuji
 
 TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 # TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
@@ -133,26 +134,9 @@ async def help(interaction: discord.Interaction):
     embed.add_field(name="", value="`/ダイス：`ダイスを振ってくれるよ。", inline=False)
     await interaction.response.send_message(embed=embed)
 
-OMIKUJI_RESULTS = [
-    ("大吉", 0.05),
-    ("吉", 0.25),
-    ("中吉", 0.55),
-    ("小吉", 0.70),
-    ("末吉", 0.95),
-    ("大凶", 1.00)
-]
-
 @bot.tree.command(name="おみくじ", description="運勢を占ってくれるよ。")
 async def おみくじ(interaction: discord.Interaction):
-    result = random.random()
-    for title, cumulative_probability in OMIKUJI_RESULTS:
-        if result <= cumulative_probability:
-            embed = discord.Embed(title=f'{interaction.user.mention} さんの運勢は「{title}」です！', color=discord.Colour.purple())
-            await interaction.response.send_message(embed=embed)
-            return
-    # 範囲外の場合はエラーメッセージを送信する（累積確率が正しければ発生しないはず）
-    embed = discord.Embed(title="ERROR", description="運勢の取得中にエラーが発生しました。", color=discord.Colour.purple())
-    await interaction.response.send_message(embed=embed)
+    await draw_omikuji(interaction)
 
 @bot.tree.command(name="チーム分け", description="チーム分けをしてくれるよ。")
 async def チーム分け(interaction: discord.Interaction, role: discord.Role):
@@ -224,130 +208,6 @@ async def vcチーム分け(interaction: discord.Interaction, channel: discord.V
         await asyncio.sleep(1)
     except discord.errors.NotFound:
         pass
-
-@bot.tree.command(name="プレイヤーデータ登録", description="自分の戦績データを登録します")
-@app_commands.describe(
-    total_matches="総試合数",
-    wins="勝利数",
-    current_rank="現在のランク（例: S9 ~ S1, Aなど）",
-    season_history="過去のシーズン履歴（例: S4, S5）"
-)
-async def プレイヤーデータ登録(
-    interaction: discord.Interaction,
-    total_matches: int,
-    wins: int,
-    current_rank: str,
-    season_history: str
-):
-    user_id = str(interaction.user.id)
-    player_ref = db.collection("player_stats").document(user_id)
-    player_ref.set({
-        "total_matches": total_matches,
-        "wins": wins,
-        "current_rank": current_rank.upper(),
-        "season_history": season_history,
-        "name": interaction.user.name
-    })
-
-    win_rate = round((wins / total_matches) * 100, 1) if total_matches > 0 else 0
-    embed = discord.Embed(title="戦績登録完了", color=discord.Color.green())
-    embed.add_field(name="総試合数", value=str(total_matches), inline=True)
-    embed.add_field(name="勝利数", value=str(wins), inline=True)
-    embed.add_field(name="勝率", value=f"{win_rate}%", inline=True)
-    embed.add_field(name="現在のランク", value=current_rank.upper(), inline=False)
-    embed.add_field(name="過去のシーズン履歴", value=season_history, inline=False)
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-
-@bot.tree.command(name="公平チーム分け", description="実力を考慮して公平にチームを分けます。")
-async def 公平チーム分け(interaction: discord.Interaction, role: discord.Role):
-    await interaction.response.defer()
-
-    if not discord.utils.get(interaction.user.roles, name="管理者"):
-        await interaction.followup.send(embed=discord.Embed(title='このコマンドは管理者のみが実行できます。', color=discord.Colour.purple()))
-        return
-
-    members = role.members
-    if len(members) < 3:
-        await interaction.followup.send("メンバー数が足りません。最低3人必要です。", ephemeral=True)
-        return
-
-    # 余りが出た場合は削除
-    remainder = len(members) % 3
-    if remainder != 0:
-        members = members[:-remainder]
-
-    rank_score_map = {
-        "S9": 6500, "S8": 6000, "S7": 5500, "S6": 5000, "S5": 4500,
-        "S4": 4000, "S3": 3500, "S2": 3000, "S1": 2500,
-        "A": 2000, "B": 1500, "C": 1000, "D": 600, "E": 300, "F": 100
-    }
-
-    import firebase_admin
-    from firebase_admin import credentials, firestore
-
-    db = firestore.client()
-
-    player_stats = {}
-    for member in members:
-        doc = db.collection("player_stats").document(str(member.id)).get()
-        if doc.exists:
-            data = doc.to_dict()
-            rank = rank_score_map.get(data.get("現在のランク", "C"), 1000)
-            season_history = [
-                rank_score_map.get(rank_str.strip().upper(), 1000)
-                for rank_str in data.get("過去のシーズン履歴", [])
-            ]
-            if len(season_history) == 0:
-                season_history = [rank] * 3
-
-            player_stats[str(member.id)] = {
-                "matches": data.get("総試合数", 0),
-                "wins": data.get("勝利数", 0),
-                "rank": rank,
-                "season_history": season_history
-            }
-        else:
-            player_stats[str(member.id)] = {
-                "matches": 0,
-                "wins": 0,
-                "rank": 1000,
-                "season_history": [1000, 1000, 1000]
-            }
-
-    def calculate_score(data):
-        win_rate = data["wins"] / data["matches"] if data["matches"] > 0 else 0
-        season_avg = sum(data["season_history"]) / len(data["season_history"])
-        return data["rank"] * 0.5 + win_rate * 1000 * 0.3 + season_avg * 0.2
-
-    scored_members = [
-        (member, calculate_score(player_stats[str(member.id)]))
-        for member in members
-    ]
-    scored_members.sort(key=lambda x: x[1], reverse=True)
-
-    teams = [[] for _ in range(len(members) // 3)]
-
-    direction = 1
-    team_index = 0
-    for member, _ in scored_members:
-        teams[team_index].append(member)
-        team_index += direction
-        if team_index >= len(teams) or team_index < 0:
-            direction *= -1
-            team_index += direction
-
-    messages = []
-    for i, team in enumerate(teams):
-        team_name = chr(ord("A") + i)
-        message = f"**チーム{team_name}**\n"
-        message += "\n".join(f"- {member.mention}" for member in team)
-        messages.append(message)
-
-        role_name = f"チーム{team_name}"
-        team_role = discord.utils.get(interaction.guild.roles, name=role_name) or await interaction.guild.create_role(name=role_name, mentionable=True)
-        await asyncio.gather(*[member.add_roles(team_role) for member in team])
-
-    await interaction.followup.send("\n\n".join(messages))
 
 @bot.tree.command(name="ステージ",description="ランダムでステージを表示")
 async def ステージ(interacion: discord.Interaction):

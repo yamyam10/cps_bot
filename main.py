@@ -11,10 +11,14 @@ load_dotenv()
 from data.heroes import heroes
 from cogs.stage import get_file_stage
 from cogs.omikuji import draw_omikuji
-from server import server_thread
+
+# Koyeb用 サーバー立ち上げ
+import uvicorn
+from server import app
 
 # TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
 TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+PORT = int(os.getenv('PORT', 8080))
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
 SHEET_NAME = os.getenv('sheet_name')
@@ -1441,7 +1445,19 @@ async def on_message_delete(message):
 #             traceback.print_exc()
 #             await message.channel.send("エラーが発生しました。")
 
-# Koyeb用 サーバー立ち上げ
-server_thread()
+# bot.run(TOKEN)
 
-bot.run(TOKEN)
+async def start_server():
+    config = uvicorn.Config(app, host="0.0.0.0", port=PORT, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+async def main():
+    # サーバーと bot を同時に起動
+    await asyncio.gather(
+        start_server(),
+        bot.start(TOKEN)
+    )
+
+if __name__ == "__main__":
+    asyncio.run(main())

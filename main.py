@@ -5,8 +5,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 from firebase_admin import credentials, firestore
 from datetime import datetime, timezone, timedelta
-import threading
-from flask import Flask
 load_dotenv()
 
 # 別ファイルで管理

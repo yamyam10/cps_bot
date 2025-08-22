@@ -11,7 +11,7 @@ load_dotenv()
 from data.heroes import heroes
 from cogs.stage import get_file_stage
 from cogs.omikuji import draw_omikuji
-from cogs.team import team_command
+from cogs.team import team_command, vc_create_teams
 
 # Koyeb用 サーバー立ち上げ
 import uvicorn
@@ -146,40 +146,9 @@ async def おみくじ(interaction: discord.Interaction):
 async def チーム分け(interaction: discord.Interaction, role: discord.Role):
     await team_command(interaction, role)
 
-@bot.tree.command(name="vcチーム分け", description="ボイスチャンネルにいるメンバーをチーム分けします。")
-async def vcチーム分け(interaction: discord.Interaction, channel: discord.VoiceChannel):
-    await interaction.response.defer()
-
-    if not discord.utils.get(interaction.user.roles, name="管理者"):
-        await interaction.followup.send(embed=discord.Embed(title='このコマンドは管理者のみが実行できます。', color=discord.Colour.purple()))
-        return
-
-    members = [member for member in channel.members if not member.bot]
-
-    if len(members) == 0:
-        await interaction.followup.send("ボイスチャンネルにメンバーがいません。")
-        return
-
-    random.shuffle(members)
-
-    teams = [members[i:i + 3] for i in range(0, len(members), 3)]
-
-    messages = []
-    for i, team in enumerate(teams):
-        team_name = chr(ord("A") + i)
-        message = f"**チーム{team_name}**\n"
-        message += "\n".join(f"- {member.mention}" for member in team)
-        messages.append(message)
-
-        role_name = f"チーム{team_name}"
-        team_role = discord.utils.get(interaction.guild.roles, name=role_name) or await interaction.guild.create_role(name=role_name, mentionable=True)
-        await asyncio.gather(*[member.add_roles(team_role) for member in team])
-
-    try:
-        await interaction.followup.send("\n".join(messages))
-        await asyncio.sleep(1)
-    except discord.errors.NotFound:
-        pass
+@bot.tree.command(name="vcチーム分け", description="ボイスチャンネルのメンバーをチーム分け")
+async def vcチーム分け(interaction: discord.Interaction):
+    await vc_create_teams(interaction)
 
 @bot.tree.command(name="ステージ",description="ランダムでステージを表示")
 async def ステージ(interacion: discord.Interaction):
@@ -260,11 +229,6 @@ def get_result(dice):
         return (f"{remaining}の目", remaining)
     else:
         return ("目なし", 0)
-
-@bot.tree.command(name="チンチロ", description="チンチロができます")
-async def チンチロ(interaction: discord.Interaction):
-    view = DiceButton()
-    await interaction.response.send_message("サイコロを振りたい場合はボタンを押してね！", view=view)
 
 # 通貨
 CURRENCY = "BM"

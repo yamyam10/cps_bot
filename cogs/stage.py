@@ -5,7 +5,7 @@ import os
 def get_file_stage():
     stage_num = random.randint(1, 21)  # 1～21
     stageimg = f"stage{stage_num}.jpg"
-    file_path = os.path.join("stage", stageimg)
+    file_path = os.path.join("img", "stage", stageimg)
     
     if not os.path.exists(file_path):
         print("stageエラー")

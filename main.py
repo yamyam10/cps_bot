@@ -17,8 +17,8 @@ from cogs.team import team_command, vc_create_teams
 import uvicorn
 from server import app
 
-TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
-# TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
+# TOKEN = os.getenv('kani_TOKEN')  # 🦀bot
+TOKEN = os.getenv('cps_TOKEN')  # カスタム大会bot
 PORT = int(os.getenv('PORT', 8080))
 
 SPREADSHEET_ID = os.getenv('spreadsheet_id')
